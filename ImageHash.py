@@ -1,11 +1,6 @@
 #!/usr/bin/python
 
-# From http://sprunge.us/WcVJ?py
-# All credit goes to original author
-
-from os import path, mkdir, sep, remove
-from sys import exit, argv
-from Httpy import Httpy
+from os import mkdir, sep
 
 from PIL import Image
 
@@ -112,36 +107,3 @@ def create_thumb(im, num):
 	im.thumbnail((100, 100), Image.ANTIALIAS)
 	im.save('thumbs%s%d.jpg' % (sep, num), 'JPEG')
 	del im
-	
-
-if __name__ == '__main__':
-	args = argv[1:]
-	if len(args) == 0:
-		print 'argument required: image file location'
-		exit(1)
-	filename = ' '.join(args)
-	remove_file = False
-	if not path.exists(filename):
-		if '://' in filename:
-			web = Httpy()
-			web.download(filename, 'img.jpg')
-			filename = 'img.jpg'
-			remove_file = True
-		else:
-			print 'file not found: %s' % (filename, )
-			exit(1)
-	
-	print 'Hash:\t\t%d' % avhash(filename)
-	
-	print ''
-	d = avhash_dict(filename)
-	for key in d:
-		print 'Hash[%s] = \t%d' % (key, d[key])
-	print ''
-	
-	dim = dimensions(filename)
-	print 'Dimensions:\t%dx%d' % (dim[0], dim[1])
-
-	# create_thumb(filename, 1)
-	if remove_file:
-		remove(filename)

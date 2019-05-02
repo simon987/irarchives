@@ -1,8 +1,6 @@
 #!/usr/bin/python
 
-from cookielib import LWPCookieJar as CookieJar
-from urllib2 import build_opener, HTTPCookieProcessor, Request
-from urllib import urlencode
+import requests
 
 DEFAULT_USERAGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:19.0) Gecko/20100101 Firefox/19.0'
 DEFAULT_TIMEOUT = 15
@@ -18,21 +16,17 @@ class Httpy:
     """
 
     def __init__(self, user_agent=DEFAULT_USERAGENT, timeout=DEFAULT_TIMEOUT):
-        self.cj = CookieJar()
-        self.opener = build_opener(HTTPCookieProcessor(self.cj))
-        self.urlopen = self.opener.open
+        self.session = requests.Session()
         self.user_agent = user_agent
+        self.session.headers = self.get_headers()
         self.timeout = timeout
 
     def get(self, url, timeout=DEFAULT_TIMEOUT, raise_exception=False):
         """ GET request """
         result = ''
-        headers = self.get_headers()
         try:
-            req = Request(url, headers=headers)
-            handle = self.urlopen(req, timeout=timeout)
-            result = handle.read()
-        except Exception, e:
+            result = self.session.get(url, timeout=timeout, headers=self.get_headers()).text
+        except Exception as e:
             if raise_exception:
                 raise e
         return result
@@ -43,47 +37,29 @@ class Httpy:
             not None. URL-encodes postdata and strips Unicode chars.
         """
         result = ''
-        headers = self.get_headers()
-        if postdata == None:
-            encoded_data = ''
-        else:
-            encoded_data = urlencode(postdata)
+
         try:
-            req = Request(url, encoded_data, headers)
-            handle = self.urlopen(req, timeout=timeout)
-            result = handle.read()
-        except Exception, e:
-            if raise_exception: raise e
+            result = self.session.post(url, timeout=timeout, data=postdata).text
+        except Exception as e:
+            if raise_exception:
+                raise e
         return result
 
     def download(self, url, save_as, timeout=DEFAULT_TIMEOUT, raise_exception=False):
         """ Downloads file from URL to save_as path. """
         result = False
-        headers = self.get_headers()
-        outfile = open(save_as, 'w')
-        try:
-            req = Request(url, headers=headers)
-            handle = self.urlopen(req, timeout=timeout)
-            while True:
-                buf = handle.read(65536)
-                if len(buf) == 0:
-                    break
-                outfile.write(buf)
-            result = True
-        except Exception, e:
-            if raise_exception:
-                raise e
-        outfile.close()
-        return result
 
-    def check_url(self, url):
-        """ Returns True if URL is valid and can be opened. """
-        try:
-            req = Request(url)
-            self.urlopen(url)
-        except Exception:
-            return False
-        return True
+        with open(save_as, 'w') as outfile:
+            try:
+                r = self.session.get(url, timeout=timeout)
+                for chunk in r.iter_content(65536):
+                    outfile.write(chunk)
+                result = True
+            except Exception as e:
+                if raise_exception:
+                    raise e
+
+        return result
 
     def get_meta(self, url, raise_exception=False, timeout=DEFAULT_TIMEOUT):
         """
@@ -91,11 +67,9 @@ class Httpy:
             Such as Content-Type, Content-Length, etc.
         """
         try:
-            headers = self.get_headers()
-            req = Request(url, headers=headers)
-            handle = self.urlopen(req, timeout=timeout)
-            return handle.info()
-        except Exception, e:
+            r = self.session.get(url, timeout=timeout)
+            return r.headers
+        except Exception as e:
             if raise_exception:
                 raise e
         return {}
@@ -107,21 +81,17 @@ class Httpy:
             otherwise returns original URL.
         """
         try:
-            headers = self.get_headers()
-            req = Request(url, headers=headers)
-            handle = urlopen(req, timeout=timeout)
-            return handle.url
+            r = self.session.get(url, headers=self.get_headers(), timeout=timeout)
+            return r.url
         except Exception:
             return url
 
-    # SETTERS
     def clear_cookies(self):
-        self.cj.clear()
+        self.session = requests.Session()
 
     def set_user_agent(self, user_agent):
         self.user_agent = user_agent
 
-    # HELPER METHODS
     def get_headers(self):
         """ Returns default headers for URL requests """
         return {'User-agent': self.user_agent}

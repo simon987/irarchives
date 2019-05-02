@@ -1,10 +1,4 @@
-
-import cgitb
-
-cgitb.enable()  # for debugging
-import cgi  # for getting query keys/values
-
-from JSON import json
+import json
 
 
 def get_subs():

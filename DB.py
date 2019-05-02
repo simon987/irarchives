@@ -1,12 +1,7 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
-try:
-    import sqlite3
-except ImportError:
-    import sqlite as sqlite3
-
+import sqlite3
 from time import sleep
+
+from common import logger
 
 
 class DB:
@@ -33,8 +28,7 @@ class DB:
         """
         self.conn = None
 
-        self.conn = sqlite3.connect(db_file)  # TODO CHANGE BACK, encoding='utf-8')
-        self.conn.text_factory = lambda x: unicode(x, "utf-8", "ignore")
+        self.conn = sqlite3.connect(db_file)
 
         # Don't create tables if not supplied.
         if schemas is not None and schemas != {} and len(schemas) > 0:
@@ -49,10 +43,10 @@ class DB:
         try:
             cur.execute('''CREATE TABLE IF NOT EXISTS %s (%s)''' % (table_name, schema))
             self.conn.commit()
-        except sqlite3.OperationalError, e:
+        except sqlite3.OperationalError as e:
             # Ignore if table already exists, otherwise print error
             if str(e).find('already exists') == -1:
-                print ' ***', e
+                logger.error(e)
         cur.close()
 
     def commit(self):
@@ -79,11 +73,12 @@ class DB:
         cur = self.conn.cursor()
         try:
             questions = ''
-            for i in xrange(0, len(values)):
-                if questions != '': questions += ','
+            for i in range(0, len(values)):
+                if questions != '':
+                    questions += ','
                 questions += '?'
             exec_string = '''insert into %s values (%s)''' % (table, questions)
-            result = cur.execute(exec_string, values)
+            cur.execute(exec_string, values)
             # self.conn.commit()
             last_row_id = cur.lastrowid
             cur.close()

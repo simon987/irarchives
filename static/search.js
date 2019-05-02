@@ -125,7 +125,7 @@ function getExternalSearchLinks(url) {
 // Sends asynchronous XML request, handles response
 function sendSearchRequest(query) {
     const request = makeHttpObject();
-    statusbar('<img src="images/spinner_dark.gif"/> searching...');
+    statusbar('<img src="../images/spinner_dark.gif"/> searching...');
     setTimeout(function () {
         const status = gebi("status.cgi.py");
         if (status.innerHTML.indexOf('searching...') >= 0) {
@@ -320,13 +320,13 @@ function display_post(post) {
     txt += '<table class="invisible" style="display: table; width: 100%; margin-left: auto;">';
     txt += '<tr>';
     txt += '<td class="result_arrow" style="vertical-align: bottom; padding-bottom: 3px;">';
-    txt += '<img src="images/up.png" class="vote"></td>';
+    txt += '<img src="../images/up.png" class="vote"></td>';
     txt += '<td rowspan="3" align="right">';
     txt += '<a href="' + url + '"><img src="' + thumb + '" class="result_thumbnail"/></a></td>';
     txt += '</tr><tr>';
     txt += '<td class="result_score"><span class="result_score">' + score + '</span></td>';
     txt += '</tr><tr>';
-    txt += '<td class="result_arrow" style="vertical-align: top;"><img src="images/down.png" class="vote"></td>';
+    txt += '<td class="result_arrow" style="vertical-align: top;"><img src="../images/down.png" class="vote"></td>';
     txt += '</tr>';
     txt += '</table>';
     txt += '</td><td valign="top" style="border: 0px; padding-top: 0px; max-width: 600px;">';
@@ -386,9 +386,9 @@ function display_comment(comment) {
     txt = '<tr><td valign="top" style="border-width: 0px;">';
     txt += '<table class="invisible" valign="top" style="display: table; width: 100%; vertical-align: top;">';
     txt += '<tr>';
-    txt += '<td class="result_arrow" style="vertical-align: bottom; padding-bottom: 4px;"><img src="images/up.png" class="vote"></td>';
+    txt += '<td class="result_arrow" style="vertical-align: bottom; padding-bottom: 4px;"><img src="../images/up.png" class="vote"></td>';
     txt += '</tr>'; // <tr><td style="font-size: 0.3em;">&nbsp;</td></tr><tr>';
-    txt += '<td class="result_arrow" style="vertical-align: top;"><img src="images/down.png" class="vote"></td>';
+    txt += '<td class="result_arrow" style="vertical-align: top;"><img src="../images/down.png" class="vote"></td>';
     txt += '</tr>';
     txt += '</table>';
     txt += '</td><td valign="top" style="border: 0; padding-top: 0;">';
@@ -485,7 +485,7 @@ function bytes_to_readable(bytes) {
 function get_subreddits() {
     const request = makeHttpObject();
     gebi("subreddits").innerHTML = '<i>loading...</i>';
-    request.open("GET", 'subreddits.cgi?get=true', true);
+    request.open("GET", 'subreddits', true);
     request.send(null);
     request.onreadystatechange = function () {
         if (request.readyState === 4) {
@@ -517,7 +517,7 @@ function handleGetSubredditsResponse(responseText) {
 
 function sendStatusRequest() {
     const request = makeHttpObject();
-    request.open("GET", 'status.cgi', true);
+    request.open("GET", 'status', true);
     request.send(null);
     request.onreadystatechange = function () {
         if (request.readyState === 4) {
@@ -533,7 +533,7 @@ function sendStatusRequest() {
 }
 
 function handleStatusResponse(responseText) {
-    const resp = JSON.parse(responseText)["status.cgi.py"];
+    const resp = JSON.parse(responseText)["status"];
     gebi("db_images").innerHTML = number_commas(resp['images']);
     gebi("db_posts").innerHTML = number_commas(resp['posts']);
     gebi("db_comments").innerHTML = number_commas(resp['comments']);
@@ -591,7 +591,7 @@ function setTheme() {
     const newlink = document.createElement("link");
     newlink.setAttribute("rel", "stylesheet");
     newlink.setAttribute("type", "text/css");
-    newlink.setAttribute("href", theme + '.css');
+    newlink.setAttribute("href", '../static/' + theme + '.css');
 
     document.getElementsByTagName("head")[0].replaceChild(newlink, oldlink);
 }

@@ -1,33 +1,20 @@
-#!/usr/bin/python
-
-######################
-# Standard library   #
-import cgitb
-
-cgitb.enable()  # for debugging
-import cgi
+import json
 import tempfile
 from os import path, close, remove
 from sys import argv
-from time import sleep, time
-import json
 from threading import Thread
+from time import sleep, time
 
-######################
-# Database           #
 from DB import DB
-######################
-# Image hashing      #
-from ImageHash import avhash
-######################
-# Web                #
 from Httpy import Httpy
+from ImageHash import avhash
+from flask import Blueprint, Response, request
 
-######################
-# Globals
-db = DB('reddit.db')  # Access to database
-web = Httpy()  # Web functionality
-# Constants
+search_page = Blueprint('search', __name__, template_folder='templates')
+
+db = DB('reddit.db')
+web = Httpy()
+
 TRUSTED_AUTHORS = [
     '4_pr0n',
     'pervertedbylanguage',
@@ -38,63 +25,52 @@ TRUSTED_SUBREDDITS = [
     'pornID',
     'tipofmypenis',
     'UnrealGirls']
+
 MAX_ALBUM_SEARCH_DEPTH = 3  # Number of images to download from album
 MAX_ALBUM_SEARCH_TIME = 10  # Max time to search album in seconds
 MAX_GOOGLE_SEARCH_TIME = 10  # Max time to spend retrieving & searching google results
 
 
-####################
-# MAIN
-def main():
-    """ Gets keys from query, performs search, prints results """
-    keys = get_keys()
-    func_map = {
-        'url': search_url,
-        'user': search_user,
-        'cache': search_cache,
-        'text': search_text,
-        'google': search_google
-    }
-    for key in func_map:
-        if key in keys:
-            func_map[key](keys[key])
-            return
-    print_error('did not receive expected key: url, user, cache, or text')
-
-
-###################
-# Primary methods
+@search_page.route("/search_url")
 def search_url(url):
+    url = url.lower()
+
     """ Searches for a single URL, prints results """
-    if url.lower().startswith('cache:'):
-        search_cache(url[len('cache:'):])
-        return
+    if url.startswith('cache:'):
+        return search_cache(url[len('cache:'):])
+
     elif 'imgur.com/a/' in url:
-        search_album(url)  # Searching album
-        return
-    elif url.lower().startswith('user:'):
-        search_user(url[len('user:'):])
-        return
-    elif url.lower().startswith('text:'):
-        search_text(url[len('text:'):])
-        return
+        return search_album(url)
+
+    elif url.startswith('user:'):
+        return search_user(url[len('user:'):])
+
+    elif url.startswith('text:'):
+        return search_text(url[len('text:'):])
+
     elif 'reddit.com/u/' in url:
-        search_user(url[url.find('/u/') + 3:])
-        return
+        return search_user(url[url.find('/u/') + 3:])
+
     elif 'reddit.com/user/' in url:
-        search_user(url[url.find('/user/') + 6:])
-        return
+        return search_user(url[url.find('/user/') + 6:])
+
     elif 'reddit.com/r/' in url and '/comments/' in url:
         # Reddit post
-        if not url.endswith('.json'): url += '.json'
+        # TODO: Extract vvvvvvvvvvvvvvv
+        if not url.endswith('.json'):
+            url += '.json'
         r = web.get(url)
         if '"url": "' in r:
             url = web.between(r, '"url": "', '"')[0]
-    if ' ' in url: url = url.replace(' ', '%20')
+        # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    # TODO: Extract vvvvvvvvvvvvvvvvvvvvvvvvvvvv
+    if ' ' in url:
+        url = url.replace(' ', '%20')
     try:
         (url, posts, comments, related, downloaded) = \
             get_results_tuple_for_image(url)
-    except Exception, e:
+    except Exception as e:
         print_error(str(e))
         return
     print json.dumps({
@@ -103,12 +79,15 @@ def search_url(url):
         'url': url,
         'related': related
     })
+    # ^^^^^^^^^^^^^^^^^^^^^^
 
 
 def search_album(url):
     url = url.replace('http://', '').replace('https://', '').replace('m.imgur.com', 'imgur.com')
-    while url.endswith('/'): url = url[:-1]
-    while url.count('/') > 2: url = url[:url.rfind('/')]
+    while url.endswith('/'):
+        url = url[:-1]
+    while url.count('/') > 2:
+        url = url[:url.rfind('/')]
     if '?' in url:
         url = url[:url.find('?')]
     if '#' in url:
@@ -137,7 +116,7 @@ def search_album(url):
                 merge_results(posts, resposts)
                 merge_results(comments, rescomments)
                 merge_results(related, resrelated)
-            except Exception, e:
+            except Exception as e:
                 continue
     else:
         # Album is not indexed; need to scrape images
@@ -165,7 +144,7 @@ def search_album(url):
                 merge_results(posts, resposts)
                 merge_results(comments, rescomments)
                 merge_results(related, resrelated)
-            except Exception, e:
+            except Exception as e:
                 continue
         # Add album images to queue, to be parsed by backend scraper
         f = open('index_queue.lst', 'a')
@@ -241,7 +220,7 @@ def search_cache(url):
     """
     try:
         url = sanitize_url(url)
-    except Exception, e:
+    except Exception as e:
         print_error(str(e))
         return
     images = []
@@ -345,8 +324,10 @@ def search_google(url):
             else:
                 break
 
-        if time() > time_to_stop: break
-        if '>Next<' not in r: break
+        if time() > time_to_stop:
+            break
+        if '>Next<' not in r:
+            break
         sleep(1)
         r = web.get('%s&start=%s' % (u, start))
         start += 10
@@ -362,7 +343,7 @@ def search_google(url):
         try:
             (t_url, t_posts, t_comments, t_related, t_downloaded) = \
                 get_results_tuple_for_hash(image_url, image_hash, downloaded)
-        except Exception, e:
+        except Exception as e:
             continue
         total_searched += 1
         merge_results(posts, t_posts)
@@ -396,7 +377,7 @@ def handle_google_result(url, time_to_stop):
     try:
         image_hash = get_hash(url, timeout=4)
         GOOGLE_RESULTS.append((url, image_hash, True))
-    except Exception, e:
+    except Exception as e:
         GOOGLE_THREAD_COUNT -= 1
         pass
     GOOGLE_THREAD_COUNT -= 1
@@ -415,7 +396,7 @@ def get_results_tuple_for_image(url):
         image_hashes = db.select('hash', 'Hashes', 'id = %d' % hashid)
         if len(image_hashes) == 0: raise Exception('could not get hash for %s' % url)
         image_hash = image_hashes[0][0]
-    except Exception, e:
+    except Exception as e:
         raise e
 
     return get_results_tuple_for_hash(url, image_hash, downloaded)
@@ -488,7 +469,7 @@ def get_hash(url, timeout=10):
         except:
             pass
         return image_hash
-    except Exception, e:
+    except Exception as e:
         # Failed to get hash, delete image & raise exception
         try:
             remove(temp_image)
@@ -527,7 +508,7 @@ def get_hashid(url, timeout=10):
             remove(temp_image)
         except:
             pass
-    except Exception, e:
+    except Exception as e:
         # Failed to get hash, delete image & raise exception
         try:
             remove(temp_image)
@@ -673,13 +654,6 @@ def build_related_comments(postid, urlid, albumid):
     return items
 
 
-########################
-# Helper methods
-
-def print_error(text):
-    print json.dumps({'error': text})
-
-
 def get_keys():
     """ Returns key/value pairs from query, uses CLI args if none found. """
     form = cgi.FieldStorage()
@@ -795,13 +769,3 @@ def is_user_valid(username):
             break
     return valid
 
-
-if __name__ == '__main__':
-    """ Entry point. Only run when executed; not imported. """
-    # search_google('http://fap.to/images/full/45/465/465741907.jpg')
-    # search_google('http://i.imgur.com/TgYeS8u.png')
-    # search_google('http://i.imgur.com/T4Wtb6f.jpg')
-    print "Content-Type: application/json"
-    print ""
-    main()  # Main & it's called functions will print as needed
-    print '\n'
