@@ -8,6 +8,7 @@ except ImportError:
 
 from time import sleep
 
+
 class DB:
 	"""
 		Database object. 
@@ -25,7 +26,7 @@ class DB:
 		"""
 		self.conn = None
 		
-		self.conn = sqlite3.connect(db_file) # TODO CHANGE BACK, encoding='utf-8')
+		self.conn = sqlite3.connect(db_file)  # TODO CHANGE BACK, encoding='utf-8')
 		self.conn.text_factory = lambda x: unicode(x, "utf-8", "ignore")
 		
 	def get_cursor(self):
@@ -41,10 +42,9 @@ class DB:
 		"""
 		cur = self.conn.cursor()
 		result = cur.execute('''select count(*) from %s where %s''' % (table, where, )).fetchall()
-		#self.conn.commit()
+		# self.conn.commit()
 		cur.close()
 		return result[0][0]
-	
 	
 	def select(self, what, table, where=''):
 		"""
@@ -62,9 +62,9 @@ class DB:
 		cur = self.conn.cursor()
 		query_string = '''SELECT %s FROM %s''' % (what, table)
 		if where != '':
-			query_string += ''' WHERE %s''' % (where)
+			query_string += ''' WHERE %s''' % (where, )
 		# Great for debugging; print every sql query
-		#print query_string
+		# print query_string
 		
 		try_again = True
 		while try_again:
@@ -80,7 +80,6 @@ class DB:
 		cur.close()
 		return results
 	
-	
 	def insert(self, table, values):
 		"""
 			Inserts tuple of values into database.
@@ -92,7 +91,8 @@ class DB:
 		try:
 			questions = ''
 			for i in xrange(0, len(values)):
-				if questions != '': questions += ','
+				if questions != '':
+					questions += ','
 				questions += '%s'
 			exec_string = '''insert into %s values (%s)''' % (table, questions)
 			result = cur.execute(exec_string, values)
@@ -102,7 +102,6 @@ class DB:
 		except sqlite3.IntegrityError:
 			cur.close()
 			return -1
-	
 	
 	def commit(self):
 		"""
@@ -117,7 +116,6 @@ class DB:
 			except Exception:
 				sleep(0.1)
 				
-	
 	def execute(self, statement, values=None):
 		"""
 			Executes a statement. Similar to the 'select' method, but does not return anything.
@@ -126,7 +124,7 @@ class DB:
 		try_again = True
 		while try_again:
 			try:
-				if values == None:
+				if values is None:
 					result = cur.execute(statement)
 				else:
 					result = cur.execute(statement, values)
@@ -134,4 +132,4 @@ class DB:
 			except:
 				sleep(0.1)
 		return result
-	
+

@@ -9,6 +9,7 @@ from Httpy import Httpy
 
 from PIL import Image
 
+
 def avhash(im):
 	"""
 		Shrinks image to 16x16 pixels,
@@ -22,7 +23,8 @@ def avhash(im):
 		im = Image.open(im)
 	im = im.convert('L').resize((16, 16), Image.ANTIALIAS)
 	ttl = 0
-	for gd in im.getdata(): ttl += gd
+	for gd in im.getdata():
+		ttl += gd
 	avg = ttl / 256
 	result = 0
 	for i, gd in enumerate(im.getdata()):
@@ -30,6 +32,7 @@ def avhash(im):
 			result += (1 << i)
 	del im
 	return result
+
 
 def avhash_dict(im):
 	""" 
@@ -43,7 +46,8 @@ def avhash_dict(im):
 		im = Image.open(im)
 	im = im.resize((16, 16), Image.ANTIALIAS).convert('L')
 	ttl = 0
-	for gd in im.getdata(): ttl += gd
+	for gd in im.getdata():
+		ttl += gd
 	avg = ttl / 256
 	result = {}
 	
@@ -80,6 +84,7 @@ def avhash_dict(im):
 	del im
 	return result
 
+
 def dimensions(im):
 	""" Returns tuple (Width, Height) for given image. """
 	if not isinstance(im, Image.Image):
@@ -88,19 +93,23 @@ def dimensions(im):
 	del im
 	return result
 
+
 def create_thumb(im, num):
 	"""
 		Creates a thumbnail for a given image file.
 		Saves to 'thumbs' directory, named <num>.jpg
 	"""
-	try: mkdir('thumbs')
-	except OSError: pass
+	try:
+		mkdir('thumbs')
+	except OSError:
+		pass
 	
 	if not isinstance(im, Image.Image):
 		im = Image.open(im)
 	# Convert to RGB if not already
-	if im.mode != "RGB": im = im.convert("RGB")
-	im.thumbnail( (100, 100), Image.ANTIALIAS)
+	if im.mode != "RGB":
+		im = im.convert("RGB")
+	im.thumbnail((100, 100), Image.ANTIALIAS)
 	im.save('thumbs%s%d.jpg' % (sep, num), 'JPEG')
 	del im
 	
@@ -119,7 +128,7 @@ if __name__ == '__main__':
 			filename = 'img.jpg'
 			remove_file = True
 		else:
-			print 'file not found: %s' % (filename)
+			print 'file not found: %s' % (filename, )
 			exit(1)
 	
 	print 'Hash:\t\t%d' % avhash(filename)
@@ -133,6 +142,6 @@ if __name__ == '__main__':
 	dim = dimensions(filename)
 	print 'Dimensions:\t%dx%d' % (dim[0], dim[1])
 
-	#create_thumb(filename, 1)
+	# create_thumb(filename, 1)
 	if remove_file:
 		remove(filename)
