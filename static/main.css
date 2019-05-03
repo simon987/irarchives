@@ -177,3 +177,6 @@ footer a {
     margin-top: 0.5em;
 }
 
+.col img {
+    width: 100%;
+}

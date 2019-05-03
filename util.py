@@ -162,15 +162,6 @@ def sanitize_url(url, web):
             url = web.between(r, "og:image' content='", "'")[-1]
         else:
             raise Exception("unable to find gfycat poster image")
-    elif url.lower().endswith('.jpg') or \
-            url.lower().endswith('.jpeg') or \
-            url.lower().endswith('.png') or \
-            url.lower().endswith('.gif'):
-        # Direct link to non-imgur image
-        pass  # Drop out of if statement & parse image
-    else:
-        # Not imgur, not a direct link; no way to parse
-        raise Exception("unable to parse non-direct, non-imgur link")
     return url
 
 

@@ -295,8 +295,12 @@
 
         //TODO: no result display
 
+        if (resp['images']) {
+            results_el.appendChild(makeGallery(resp['images']));
+        }
+
         // POSTS
-        if (resp.posts.length > 0) {
+        if (resp.posts && resp.posts.length > 0) {
             results_el.appendChild(mkHeader(`${resp.posts.length} post${resp.comments.length === 1 ?'':'s'}`));
             for (let i in resp['posts']) {
                 results_el.appendChild(makePost(resp['posts'][i]));
@@ -304,7 +308,7 @@
         }
 
         // COMMENTS
-        if (resp.comments.length > 0) {
+        if (resp.comments && resp.comments.length > 0) {
             //TODO: makeCommentsHeader
             results_el.appendChild(mkHeader(`${resp.comments.length} comment${resp.comments.length === 1 ?'':'s'}`));
             for (let i in resp['comments']) {
@@ -313,7 +317,7 @@
         }
 
         // RELATED COMMENTS
-        if (resp.related.length > 0) {
+        if (resp.related && resp.related.length > 0) {
             //TODO: makeRelatedHeader
             results_el.appendChild(mkHeader(`${resp.related.length} related comment${resp.comments.length === 1 ?'':'s'}`));
             for (let i in resp['related']) {
@@ -554,6 +558,32 @@
         el.appendChild(votes);
         el.appendChild(down);
         return el;
+    }
+
+    function makeGallery(images, rows=3) {
+        const gallery = document.createElement('div');
+        gallery.setAttribute('class', 'row');
+
+        let cols = [];
+        for (let i = 0; i < rows; i++) {
+            let col = document.createElement('div');
+            col.setAttribute('class', `col s${12/rows}`);
+            gallery.appendChild(col);
+            cols.push(col);
+        }
+
+        let col = 0;
+        for (let i in images) {
+            if (col === rows) {
+                col = 0;
+            }
+            const img = document.createElement('img');
+            img.setAttribute('src', images[i].thumb);
+            cols[col].appendChild(img);
+            col++;
+        }
+
+        return gallery;
     }
 
 </script>

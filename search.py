@@ -236,7 +236,7 @@ def search_cache(url):
     image_tuples = db.select('id, url', 'ImageURLs', query_text)
     for (urlid, imageurl) in image_tuples:
         image = {
-            'thumb': 'thumbs/%d.jpg' % urlid,
+            'thumb': 'static/thumbs/%d.jpg' % urlid,
             'url': imageurl
         }
         images.append(image)
