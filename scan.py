@@ -20,7 +20,7 @@ from Httpy import Httpy
 from ImageHash import avhash, dimensions, create_thumb
 from common import logger
 from img_util import get_image_urls
-from util import load_list, save_list, get_links_from_body, should_download_image, is_direct_link
+from util import load_list, save_list, get_links_from_body, should_download_image, is_direct_link, clean_url
 
 reddit = ReddiWrap.ReddiWrap()
 web = Httpy()
@@ -172,7 +172,8 @@ def parse_subreddit(subreddit, timeframe):
     while True:
         # Check if there are pending albums to be indexed
         check_and_drain_queue()
-        query_text = '/r/%s/top?t=%s' % (subreddit, timeframe)
+        # query_text = '/r/%s/top?t=%s' % (subreddit, timeframe)
+        query_text = '/r/%s/new?t=%s' % (subreddit, timeframe)
         if total_post_count == 0:
             logger.info('loading first page of %s' % query_text)
             posts = reddit.get(query_text)
@@ -281,8 +282,20 @@ def parse_url(url, postid=0, commentid=0):
         parse_image(url)
         return True
 
-    for image_url in get_image_urls(url):
-        parse_image(image_url, postid, commentid)
+    image_urls = get_image_urls(url)
+    url = clean_url(url)
+
+    # We assume that any url that yields more than 1 image is an album
+    albumid = 0
+    if len(image_urls) > 1:
+        albumid = db.insert('Albums', (None, url))
+        if albumid == -1:
+            albumids = db.select('id', 'Albums', 'url LIKE "%s"' % url)
+            albumid = albumids[0][0]
+
+    for image_url in image_urls:
+        parse_image(image_url, postid, commentid, albumid)
+    db.commit()
     return True
 
 
@@ -293,6 +306,7 @@ def parse_image(url, postid=0, commentid=0, albumid=0):
     """
 
     if not should_download_image(url):
+        logger.debug('Skipping file %s' % url)
         return
 
     try:
@@ -315,7 +329,7 @@ def get_hashid_and_urlid(url):
         Populates 'Hashes' and 'ImageURLs' if needed.
         3rd tuple is True if downloading of image was required
     """
-    existing = db.select('id, hashid', 'ImageURLs', 'url = "%s"' % url)
+    existing = db.select('id, hashid', 'ImageURLs', 'url LIKE "%s"' % url)
     if len(existing) > 0:
         urlid = existing[0][0]
         hashid = existing[0][1]
@@ -334,7 +348,7 @@ def get_hashid_and_urlid(url):
     try:
         logger.debug('Hashing ...')
         (width, height) = dimensions(temp_image)
-        if width > 4000 or height > 4000:
+        if width > 6000 or height > 6000:
             logger.error('Image too large to hash (%dx%d' % (width, height))
             raise Exception('too large to hash (%dx%d)' % (width, height))
         if width == 161 and height == 81:  # TODO extract

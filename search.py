@@ -1,84 +1,82 @@
 import json
 import tempfile
+import time
 from os import path, close, remove
-from sys import argv
 from threading import Thread
 from time import sleep, time
+
+from flask import Blueprint, Response, request
 
 from DB import DB
 from Httpy import Httpy
 from ImageHash import avhash
-from flask import Blueprint, Response, request
+from util import sanitize_url, imgur_get_highest_res, sort_by_ranking, is_user_valid
 
 search_page = Blueprint('search', __name__, template_folder='templates')
 
 db = DB('reddit.db')
 web = Httpy()
 
-TRUSTED_AUTHORS = [
-    '4_pr0n',
-    'pervertedbylanguage',
-    'WakingLife']
-TRUSTED_SUBREDDITS = [
-    'AmateurArchives',
-    'gonewild',
-    'pornID',
-    'tipofmypenis',
-    'UnrealGirls']
-
 MAX_ALBUM_SEARCH_DEPTH = 3  # Number of images to download from album
 MAX_ALBUM_SEARCH_TIME = 10  # Max time to search album in seconds
 MAX_GOOGLE_SEARCH_TIME = 10  # Max time to spend retrieving & searching google results
 
 
-@search_page.route("/search_url")
-def search_url(url):
-    url = url.lower()
-
+@search_page.route("/search")
+def search():
     """ Searches for a single URL, prints results """
-    if url.startswith('cache:'):
-        return search_cache(url[len('cache:'):])
 
-    elif 'imgur.com/a/' in url:
-        return search_album(url)
+    if "q" in request.args:
+        query = request.args["q"].lower()
+    else:
+        return Response(json.dumps(""))
 
-    elif url.startswith('user:'):
-        return search_user(url[len('user:'):])
+    # Cache
+    if query.startswith('cache:'):
+        return search_cache(query[len('cache:'):])
 
-    elif url.startswith('text:'):
-        return search_text(url[len('text:'):])
+    # ???
+    elif 'imgur.com/a/' in query:
+        return search_album(query)
 
-    elif 'reddit.com/u/' in url:
-        return search_user(url[url.find('/u/') + 3:])
+    # User
+    elif query.startswith('user:'):
+        return search_user(query[len('user:'):])
 
-    elif 'reddit.com/user/' in url:
-        return search_user(url[url.find('/user/') + 6:])
+    elif 'reddit.com/u/' in query:
+        return search_user(query[query.find('/u/') + 3:])
 
-    elif 'reddit.com/r/' in url and '/comments/' in url:
-        # Reddit post
-        # TODO: Extract vvvvvvvvvvvvvvv
-        if not url.endswith('.json'):
-            url += '.json'
-        r = web.get(url)
-        if '"url": "' in r:
-            url = web.between(r, '"url": "', '"')[0]
-        # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    elif 'reddit.com/user/' in query:
+        return search_user(query[query.find('/user/') + 6:])
 
+    # Text
+    elif query.startswith('text:'):
+        return search_text(query[len('text:'):])
+
+    # Post?
     # TODO: Extract vvvvvvvvvvvvvvvvvvvvvvvvvvvv
-    if ' ' in url:
-        url = url.replace(' ', '%20')
+    elif 'reddit.com/r/' in query and '/comments/' in query:
+        # Reddit post
+        if not query.endswith('.json'):
+            query += '.json'
+        r = web.get(query)
+        if '"url": "' in r:
+            query = web.between(r, '"url": "', '"')[0]
+
+    if ' ' in query:
+        query = query.replace(' ', '%20')
     try:
-        (url, posts, comments, related, downloaded) = \
-            get_results_tuple_for_image(url)
+        (query, posts, comments, related, downloaded) = \
+            get_results_tuple_for_image(query)
     except Exception as e:
-        print_error(str(e))
-        return
-    print json.dumps({
+        return Response(json.dumps({'error': str(e)}), mimetype="application/json")
+
+    return Response(json.dumps({
         'posts': posts,
         'comments': comments,
-        'url': url,
+        'url': query,
         'related': related
-    })
+    }), mimetype="application/json")
     # ^^^^^^^^^^^^^^^^^^^^^^
 
 
@@ -98,7 +96,7 @@ def search_album(url):
     related = []
     checked_count = 0
     time_started = time()
-    albumids = db.select('id', 'Albums', 'url = "%s"' % url)
+    albumids = db.select('id', 'Albums', 'url LIKE "%s"' % url)
     if len(albumids) > 0:
         # Album is already indexed
         albumid = albumids[0][0]
@@ -116,15 +114,14 @@ def search_album(url):
                 merge_results(posts, resposts)
                 merge_results(comments, rescomments)
                 merge_results(related, resrelated)
-            except Exception as e:
+            except:
                 continue
     else:
         # Album is not indexed; need to scrape images
         r = web.get('%s/noscript' % url)
         image_urls = web.between(r, 'img src="//i.', '"')
         if len(image_urls) == 0:
-            print_error('empty imgur album (404?)')
-            return
+            return Response(json.dumps({"error": "empty album"}), mimetype="json")
         # Search stats
         downloaded_count = 0
         for link in image_urls:
@@ -135,7 +132,7 @@ def search_album(url):
                 link = link[:link.find('?')]
             if '#' in link:
                 link = link[:link.find('#')]
-            link = imgur_get_highest_res(link)
+            link = imgur_get_highest_res(link, web)
             checked_count += 1
             try:
                 (imgurl, resposts, rescomments, resrelated, downloaded) = \
@@ -144,14 +141,15 @@ def search_album(url):
                 merge_results(posts, resposts)
                 merge_results(comments, rescomments)
                 merge_results(related, resrelated)
-            except Exception as e:
+            except:
                 continue
         # Add album images to queue, to be parsed by backend scraper
         f = open('index_queue.lst', 'a')
         f.write('http://i.%s\n' % '\nhttp://i.'.join(image_urls))
         f.flush()
         f.close()
-    print json.dumps({
+
+    return Response(json.dumps({
         'url': url,
         'checked': checked_count,
         'total': len(image_urls),
@@ -159,14 +157,14 @@ def search_album(url):
         'posts': posts,
         'comments': comments,
         'related': related
-    })
+    }), mimetype="application/json")
 
 
 def search_user(user):
     """ Returns posts/comments by a reddit user """
     if user.strip() == '' or not is_user_valid(user):
-        print_error('invalid username')
-        return
+        raise Exception('invalid username')
+
     posts = []
     comments = []
     related = []
@@ -204,12 +202,19 @@ def search_user(user):
                 pass
     posts = sort_by_ranking(posts)
     comments = sort_by_ranking(comments)
-    print json.dumps({
+
+    for com in comments:
+        for rel in related:
+            if rel['hexid'] == com['hexid']:
+                related.remove(rel)
+                break
+
+    return Response(json.dumps({
         'url': 'user:%s' % user,  # 'http://reddit.com/user/%s' % user,
         'posts': posts,
         'comments': comments,
         'related': related
-    })
+    }), mimetype="application/json")
 
 
 def search_cache(url):
@@ -219,12 +224,11 @@ def search_cache(url):
         can be retrieved via this method (sometimes)
     """
     try:
-        url = sanitize_url(url)
+        url = sanitize_url(url, web)
     except Exception as e:
-        print_error(str(e))
-        return
+        return Response(json.dumps({"error": str(e)}), mimetype="application/json")
     images = []
-    query_text = 'id IN (SELECT urlid FROM Images WHERE albumid IN (SELECT DISTINCT id FROM albums WHERE url = "%s"))' \
+    query_text = 'id IN (SELECT urlid FROM Images WHERE albumid IN (SELECT DISTINCT id FROM albums WHERE url LIKE "%s"))' \
                  % (url,)
     image_tuples = db.select('id, url', 'ImageURLs', query_text)
     for (urlid, imageurl) in image_tuples:
@@ -233,10 +237,11 @@ def search_cache(url):
             'url': imageurl
         }
         images.append(image)
-    print json.dumps({
+
+    return Response(json.dumps({
         'url': 'cache:%s' % url,
         'images': images
-    })
+    }), mimetype="application/json")
 
 
 def search_text(text):
@@ -266,12 +271,12 @@ def search_text(text):
                 pass
     posts = sort_by_ranking(posts)
     comments = sort_by_ranking(comments)
-    print json.dumps({
+    return Response(json.dumps({
         'url': 'text:%s' % text,
         'posts': posts,
         'comments': comments,
         'related': related
-    })
+    }), mimetype="application/json")
 
 
 GOOGLE_RESULTS = []
@@ -307,7 +312,8 @@ def search_google(url):
             chunk = chunk[:chunk.find('Visually similar images')]
         images = web.between(chunk, '/imgres?imgurl=', '&amp;imgref')
         for image in images:
-            if time() > time_to_stop: break
+            if time() > time_to_stop:
+                break
             splits = image.split('&')
             image = ''
             for split in splits:
@@ -343,26 +349,27 @@ def search_google(url):
         try:
             (t_url, t_posts, t_comments, t_related, t_downloaded) = \
                 get_results_tuple_for_hash(image_url, image_hash, downloaded)
-        except Exception as e:
+        except:
             continue
         total_searched += 1
         merge_results(posts, t_posts)
         merge_results(comments, t_comments)
         merge_results(related, t_related)
     if len(posts) + len(comments) + len(related) == 0:
-        print_error('no results - searched %d google images' % total_searched)
-        return
-    print json.dumps({
+        return Response({"error": 'no results - searched %d google images' % total_searched})
+
+    return Response(json.dumps({
         'posts': posts,
         'comments': comments,
         'url': 'google:%s' % url,
         'related': related
-    })
+    }), mimetype="application/json")
 
 
 def handle_google_result(url, time_to_stop):
     global GOOGLE_RESULTS, GOOGLE_THREAD_MAX, GOOGLE_THREAD_COUNT
-    if time() > time_to_stop: return
+    if time() > time_to_stop:
+        return
     GOOGLE_THREAD_COUNT += 1
     url = web.unshorten(url, timeout=3)
     if time() > time_to_stop:
@@ -377,9 +384,8 @@ def handle_google_result(url, time_to_stop):
     try:
         image_hash = get_hash(url, timeout=4)
         GOOGLE_RESULTS.append((url, image_hash, True))
-    except Exception as e:
+    except Exception:
         GOOGLE_THREAD_COUNT -= 1
-        pass
     GOOGLE_THREAD_COUNT -= 1
 
 
@@ -387,14 +393,15 @@ def handle_google_result(url, time_to_stop):
 # Helper methods
 def get_results_tuple_for_image(url):
     """ Returns tuple of posts, comments, related for an image """
-    url = sanitize_url(url)
+    url = sanitize_url(url, web)
 
     try:
         (hashid, downloaded) = get_hashid(url)
         if hashid == -1 or hashid == 870075:  # No hash matches
             return url, [], [], [], downloaded
         image_hashes = db.select('hash', 'Hashes', 'id = %d' % hashid)
-        if len(image_hashes) == 0: raise Exception('could not get hash for %s' % url)
+        if len(image_hashes) == 0:
+            raise Exception('could not get hash for %s' % url)
         image_hash = image_hashes[0][0]
     except Exception as e:
         raise e
@@ -491,7 +498,7 @@ def get_hashid(url, timeout=10):
         Returns -1 if the image's hash was not found in the table.
         Does not modify DB! (read only)
     """
-    existing = db.select('hashid', 'ImageURLs', 'url = "%s"' % url)
+    existing = db.select('hashid', 'ImageURLs', 'url LIKE "%s"' % url)
     if len(existing) > 0:
         return existing[0][0], False
 
@@ -534,7 +541,8 @@ def merge_results(source_list, to_add):
             if target['hexid'] == source['hexid']:
                 should_add = False
                 break
-        if should_add: source_list.append(target)
+        if should_add:
+            source_list.append(target)
 
 
 ###################
@@ -542,9 +550,10 @@ def merge_results(source_list, to_add):
 
 def build_post(postid, urlid, albumid):
     """ Builds dict containing attributes about a post """
-    item = {'thumb': 'thumbs/%d.jpg' % urlid}  # Dict to return
+    item = {'thumb': 'static/thumbs/%d.jpg' % urlid}  # Dict to return
     # Thumbnail
-    if not path.exists(item['thumb']): item['thumb'] = ''
+    # if not path.exists(item['thumb']):
+    #     item['thumb'] = ''
 
     # Get info about post
     (postid,
@@ -561,8 +570,7 @@ def build_post(postid, urlid, albumid):
      item['score'],
      item['created'],
      item['is_self'],
-     item['over_18']) \
-        = db.select('*', 'Posts', 'id = %d' % postid)[0]
+     item['over_18']) = db.select('*', 'Posts', 'id = %d' % postid)[0]
     # Get info about image
     (item['imageurl'],
      item['width'],
@@ -577,7 +585,7 @@ def build_post(postid, urlid, albumid):
 
 def build_comment(commentid, urlid, albumid):
     """ Builds dict containing attributes about a comment """
-    item = {'thumb': 'thumbs/%d.jpg' % urlid}  # Dict to return
+    item = {'thumb': 'static/thumbs/%d.jpg' % urlid}  # Dict to return
 
     # Thumbnail
     if not path.exists(item['thumb']):
@@ -652,120 +660,3 @@ def build_related_comments(postid, urlid, albumid):
         }
         items.append(item)
     return items
-
-
-def get_keys():
-    """ Returns key/value pairs from query, uses CLI args if none found. """
-    form = cgi.FieldStorage()
-    keys = {}
-    for key in form.keys():
-        keys[key] = form[key].value
-    if len(keys) == 0 and len(argv) > 2:
-        keys = {argv[1]: argv[2]}
-    return keys
-
-
-def sort_by_ranking(objs):
-    """ Sorts list of posts/comments based on heuristic. """
-    for obj in objs:
-        if 'comments' in obj:
-            obj['ranking'] = int(obj['comments'])
-            obj['ranking'] += int(obj['ups'])
-        else:
-            obj['ranking'] = int(obj['ups'])
-        if 'url' in obj and 'imgur.com/a/' in obj['url'] \
-                or 'imageurl' in obj and 'imgur.com/a/' in obj['imageurl']:
-            obj['ranking'] += 600
-        if obj['author'] in TRUSTED_AUTHORS:
-            obj['ranking'] += 500
-        if obj['subreddit'] in TRUSTED_SUBREDDITS:
-            obj['ranking'] += 400
-    return sorted(objs, reverse=True, key=lambda tup: tup['ranking'])
-
-
-def sanitize_url(url):
-    """ 
-        Retrieves direct link to image based on URL,
-        Strips excess data from imgur albums,
-        Throws Exception if unable to find direct image.
-    """
-    url = url.strip()
-    if '?' in url: url = url[:url.find('?')]
-    if '#' in url: url = url[:url.find('#')]
-    if url == '' or not '.' in url:
-        raise Exception('invalid URL')
-
-    if '://' not in url:
-        url = 'http://%s' % url  # Fix for what'shisface who forgets to prepend http://
-
-    while url.endswith('/'): url = url[:-1]
-    if 'imgur.com' in url:
-        if '.com/a/' in url:
-            # Album
-            url = url.replace('http://', '').replace('https://', '')
-            while url.endswith('/'):
-                url = url[:-1]
-            while url.count('/') > 2:
-                url = url[:url.rfind('/')]
-            if '?' in url:
-                url = url[:url.find('?')]
-            if '#' in url:
-                url = url[:url.find('#')]
-            url = 'http://%s' % url  # How the URL will be stored in the DB
-            return url
-
-        elif url.lower().endswith('.jpeg') or \
-                url.lower().endswith('.jpg') or \
-                url.lower().endswith('.png') or \
-                url.lower().endswith('.gif'):
-            # Direct imgur link, find highest res
-            url = imgur_get_highest_res(url)
-        # Drop out of if statement & parse image
-        else:
-            # Indirect imgur link (e.g. "imgur.com/abcde")
-            r = web.get(url)
-            if '"image_src" href="' in r:
-                url = web.between(r, '"image_src" href="', '"')[0]
-            else:
-                raise Exception("unable to find imgur image (404?)")
-    elif 'gfycat.com' in url and not 'thumbs.gfycat.com' in url:
-        r = web.get(url)
-        if "og:image' content='" in r:
-            url = web.between(r, "og:image' content='", "'")[-1]
-        else:
-            raise Exception("unable to find gfycat poster image")
-    elif url.lower().endswith('.jpg') or \
-            url.lower().endswith('.jpeg') or \
-            url.lower().endswith('.png') or \
-            url.lower().endswith('.gif'):
-        # Direct link to non-imgur image
-        pass  # Drop out of if statement & parse image
-    else:
-        # Not imgur, not a direct link; no way to parse
-        raise Exception("unable to parse non-direct, non-imgur link")
-    return url
-
-
-def imgur_get_highest_res(url):
-    """ Retrieves highest-res imgur image """
-    if 'h.' not in url:
-        return url
-    temp = url.replace('h.', '.')
-    m = web.get_meta(temp)
-    if 'Content-Type' in m and 'image' in m['Content-Type'].lower() and \
-            'Content-Length' in m and m['Content-Length'] != '503':
-        return temp
-    else:
-        return url
-
-
-def is_user_valid(username):
-    """ Checks if username is valid reddit name, assumes lcase/strip """
-    allowed = 'abcdefghijklmnopqrstuvwxyz1234567890_-'
-    valid = True
-    for c in username.lower():
-        if not c in allowed:
-            valid = False
-            break
-    return valid
-

@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 import requests
 
 DEFAULT_USERAGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:19.0) Gecko/20100101 Firefox/19.0'
@@ -49,7 +47,7 @@ class Httpy:
         """ Downloads file from URL to save_as path. """
         result = False
 
-        with open(save_as, 'w') as outfile:
+        with open(save_as, 'wb') as outfile:
             try:
                 r = self.session.get(url, timeout=timeout)
                 for chunk in r.iter_content(65536):

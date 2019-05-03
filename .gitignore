@@ -1,4 +1,6 @@
-reddit.db
+*.db
 thumbs/
 *.pyc
 .idea/
+*.log
+login_credentials.txt

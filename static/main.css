@@ -1,0 +1,147 @@
+.header {
+    text-align: center;
+}
+
+.bold {
+    font-weight: bold;
+}
+
+body {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+    background: #212121;
+}
+
+main {
+    flex: 1 0 auto;
+}
+
+#subreddit_header {
+    padding-top: 15px;
+    padding-bottom: 10px;
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+#subreddits {
+    text-align: center;
+    font-size: 0.8em;
+    padding: 10px;
+}
+
+.subreddit {
+    display: inline;
+    padding-right: 15px;
+    line-height: 200%;
+}
+
+.callback_btn {
+    padding: 0;
+    color: #039be5;
+}
+
+.progress {
+    margin: 3em 0;
+}
+
+.up {
+    display: block;
+    color: #039be5;
+}
+
+.votes {
+    display: block;
+}
+
+.down {
+    display: block;
+    color: orangered;
+}
+
+.upboat {
+    text-align: center;
+}
+
+/*HEADER*/
+a.nsfw {
+    text-align: center;
+    font-size: 2.5rem;
+    letter-spacing: -0.02em;
+    font-weight: bold !important;
+}
+
+.nsfw_red {
+    color: #b00;
+    letter-spacing: -0.05em;
+    padding: 0;
+    text-shadow: 4px 0 10px rgba(200, 0, 0, 0.3),
+    0 4px 10px rgba(200, 0, 0, 0.3),
+    -4px 0 10px rgba(200, 0, 0, 0.3),
+    0 -4px 10px rgba(200, 0, 0, 0.3);
+}
+
+a.nsfw:hover .nsfw_red {
+    color: #f00;
+    text-shadow: 4px 0 10px rgba(255, 0, 0, 0.3),
+    0 4px 10px rgba(255, 0, 0, 0.3),
+    -4px 0 10px rgba(255, 0, 0, 0.3),
+    0 -4px 10px rgba(255, 0, 0, 0.3);
+}
+
+.nsfw_bracket {
+    color: #b00;
+    font-size: 1.2em;
+    letter-spacing: -0.15em;
+    position: relative;
+    text-shadow: 4px 0 10px rgba(200, 0, 0, 0.3),
+    0 4px 10px rgba(200, 0, 0, 0.3),
+    -4px 0 10px rgba(200, 0, 0, 0.3),
+    0 -4px 10px rgba(200, 0, 0, 0.3);
+}
+
+a.nsfw:hover .nsfw_bracket {
+    color: #f00;
+    letter-spacing: -0.15em;
+    text-shadow: 4px 0 10px rgba(255, 0, 0, 0.3),
+    0 4px 10px rgba(255, 0, 0, 0.3),
+    -4px 0 10px rgba(255, 0, 0, 0.3),
+    0 -4px 10px rgba(255, 0, 0, 0.3);
+}
+
+#nsfw_bracket_left {
+    left: 5px;
+}
+
+#nsfw_bracket_right {
+    left: -7px;
+}
+
+.nsfw_white {
+    color: #ddd;
+    position: relative;
+    top: -2px;
+    padding: 0;
+    letter-spacing: -0.05em;
+}
+
+a.nsfw:hover .nsfw_white {
+    color: #fff;
+}
+
+.card-panel .input-field {
+    margin-bottom: 0;
+}
+
+footer a {
+    color: #CFD8DC;
+}
+
+@media (max-width: 700px) {
+    .card.horizontal {
+        display: block;
+    }
+    .card.horizontal .card-image {
+        max-width: inherit;
+    }
+}

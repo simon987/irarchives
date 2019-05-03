@@ -26,9 +26,7 @@ class DB:
             # This would open the 'file.db' file and create two tables with the respective schemas.
             If the tables already exist, the existing tables remain unaltered.
         """
-        self.conn = None
-
-        self.conn = sqlite3.connect(db_file)
+        self.db_file = db_file
 
         # Don't create tables if not supplied.
         if schemas is not None and schemas != {} and len(schemas) > 0:
@@ -39,28 +37,15 @@ class DB:
 
     def create_table(self, table_name, schema):
         """Creates new table with schema"""
-        cur = self.conn.cursor()
-        try:
-            cur.execute('''CREATE TABLE IF NOT EXISTS %s (%s)''' % (table_name, schema))
-            self.conn.commit()
-        except sqlite3.OperationalError as e:
-            # Ignore if table already exists, otherwise print error
-            if str(e).find('already exists') == -1:
-                logger.error(e)
-        cur.close()
-
-    def commit(self):
-        """
-        Commits any changes to the database.
-        CHANGES WILL NOT HAPPEN UNLEsS THIS COMMAND IS EXECUTED AFTERWARD!
-        """
-        try_again = True
-        while try_again:
+        with sqlite3.connect(self.db_file) as conn:
+            cur = conn.cursor()
             try:
-                self.conn.commit()
-                try_again = False
-            except:
-                sleep(1)
+                cur.execute('''CREATE TABLE IF NOT EXISTS %s (%s)''' % (table_name, schema))
+                conn.commit()
+            except sqlite3.OperationalError as e:
+                # Ignore if table already exists, otherwise print error
+                if str(e).find('already exists') == -1:
+                    logger.error(e)
 
     def insert(self, table, values):
         """
@@ -70,25 +55,21 @@ class DB:
 
         Returns row id of tuple inserted, or -1 if error occurred.
         """
-        cur = self.conn.cursor()
-        try:
-            questions = ''
-            for i in range(0, len(values)):
-                if questions != '':
-                    questions += ','
-                questions += '?'
-            exec_string = '''insert into %s values (%s)''' % (table, questions)
-            cur.execute(exec_string, values)
-            # self.conn.commit()
-            last_row_id = cur.lastrowid
-            cur.close()
-            return last_row_id
-        except sqlite3.IntegrityError:
-            cur.close()
-            return -1
-
-    def get_cursor(self):
-        return self.conn.cursor()
+        with sqlite3.connect(self.db_file) as conn:
+            cur = conn.cursor()
+            try:
+                questions = ''
+                for i in range(0, len(values)):
+                    if questions != '':
+                        questions += ','
+                    questions += '?'
+                exec_string = '''insert into %s values (%s)''' % (table, questions)
+                cur.execute(exec_string, values)
+                conn.commit()
+                last_row_id = cur.lastrowid
+                return last_row_id
+            except sqlite3.IntegrityError:
+                return -1
 
     def count(self, table, where):
         """
@@ -98,11 +79,10 @@ class DB:
 
         Returns # of tuples found in query.
         """
-        cur = self.conn.cursor()
-        result = cur.execute('''select count(*) from %s where %s''' % (table, where,)).fetchall()
-        # self.conn.commit()
-        cur.close()
-        return result[0][0]
+        with sqlite3.connect(self.db_file) as conn:
+            cur = conn.cursor()
+            result = cur.execute('''select count(*) from %s where %s''' % (table, where,)).fetchall()
+            return result[0][0]
 
     def select(self, what, table, where=''):
         """
@@ -117,23 +97,23 @@ class DB:
                 print result[1] # prints second attribute
                 ...
         """
-        cur = self.conn.cursor()
-        query_string = '''SELECT %s FROM %s''' % (what, table)
-        if where != '':
-            query_string += ''' WHERE %s''' % (where,)
-        cur.execute(query_string)
-        results = []
-        for result in cur:
-            results.append(result)
-        # self.conn.commit()
-        cur.close()
-        return results
+        with sqlite3.connect(self.db_file) as conn:
+            cur = conn.cursor()
+            query_string = '''SELECT %s FROM %s''' % (what, table)
+            if where != '':
+                query_string += ''' WHERE %s''' % (where,)
+            cur.execute(query_string)
+            results = []
+            for result in cur:
+                results.append(result)
+            return results
 
     def execute(self, statement):
         """
         Executes a statement. Similar to the 'select' method, but does not return anything.
         """
-        cur = self.conn.cursor()
-        result = cur.execute(statement)
-        # self.conn.commit()
+        with sqlite3.connect(self.db_file) as conn:
+            cur = conn.cursor()
+            result = cur.execute(statement)
+            conn.commit()
         return result
