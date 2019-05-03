@@ -21,7 +21,8 @@ from Httpy import Httpy
 from ImageHash import avhash, dimensions, create_thumb
 from common import logger
 from img_util import get_image_urls
-from util import load_list, save_list, get_links_from_body, should_download_image, is_direct_link, clean_url
+from util import load_list, save_list, get_links_from_body, should_download_image, is_direct_link, clean_url, \
+    should_parse_link
 
 reddit = ReddiWrap.ReddiWrap()
 web = Httpy()
@@ -173,8 +174,7 @@ def parse_subreddit(subreddit, timeframe):
     while True:
         # Check if there are pending albums to be indexed
         check_and_drain_queue()
-        # query_text = '/r/%s/top?t=%s' % (subreddit, timeframe)
-        query_text = '/r/%s/new?t=%s' % (subreddit, timeframe)
+        query_text = '/r/%s/top?t=%s' % (subreddit, timeframe)
         if total_post_count == 0:
             logger.info('loading first page of %s' % query_text)
             posts = reddit.get(query_text)
@@ -249,7 +249,6 @@ def parse_post(post):
         reddit.fetch_comments(post)
         for comment in post.comments:
             parse_comment(comment, postid_db)
-    db.commit()
 
 
 def parse_comment(comment, postid):
@@ -280,8 +279,11 @@ def parse_url(url, postid=0, commentid=0):
     """ Gets image hash(es) from URL, populates database """
 
     if is_direct_link(url):
-        parse_image(url)
+        parse_image(url, postid, commentid)
         return True
+
+    if not should_parse_link(url):
+        return
 
     image_urls = get_image_urls(url)
     url = clean_url(url)
@@ -348,12 +350,12 @@ def get_hashid_and_urlid(url):
     try:
         logger.debug('Hashing ...')
         (width, height) = dimensions(temp_image)
-        if width > 6000 or height > 6000:
+        if width > 10000 or height > 10000:
             logger.error('Image too large to hash (%dx%d' % (width, height))
             raise Exception('too large to hash (%dx%d)' % (width, height))
-        if width == 161 and height == 81:  # TODO extract
+        if width == 130 and height == 60:
             # Size of empty imgur image ('not found!')
-            raise Exception('Found 404 image dimensions (161x81)')
+            raise Exception('Found 404 image dimensions (130x60)')
         image_hash = str(avhash(temp_image))
     except Exception as e:
         # Failed to get hash, delete image & raise exception
@@ -381,6 +383,7 @@ def get_hashid_and_urlid(url):
     # Image attributes
     try:
         filesize = path.getsize(temp_image)
+        url = clean_url(url)
         urlid = db.insert('ImageURLs', (None, url, hashid, width, height, filesize))
         create_thumb(temp_image, urlid)  # Make a thumbnail!
         logger.debug('Done')

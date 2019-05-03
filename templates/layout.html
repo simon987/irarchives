@@ -370,8 +370,7 @@
         el.setAttribute('class', 'card-action');
         el.appendChild(mkLink(`https://images.google.com/searchbyimage?image_url=${url}`, 'Google'));
         el.appendChild(mkLink(`https://www.tineye.com/search?pluginver=bookmark_1.0&url=${url}`, 'TinEye'));
-        el.appendChild(mkLink(`https://www.karmadecay.com/${url.replace('http:', '').replace('https:', '')}`, 'Karma Decay'));
-        el.appendChild(mkLink(`https://iqdb.org/?url=${url.replace('http:', '').replace('https:', '')}`, 'iqdb'));
+        el.appendChild(mkLink(`https://www.karmadecay.com/${url.replace('http:', '').replace('https:', '')}`, 'KarmaDecay'));
 
         return el;
     }

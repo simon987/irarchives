@@ -1,6 +1,11 @@
 import re
 
+from common import logger
+
 LINK_RE = re.compile(r'\[.*\]\(([^\)]+)\)')
+SUB_RE = re.compile(r"^https?://(.*)/r/(\w+)"
+                    r"($|/|/about/(.*)|/wiki/(.*)|/(top|new|hot|rising|controvertial)/\?.*|/comments/(.*))$")
+USER_RE = re.compile("^https?://(.*)/(u|user)/(\\w+)($|/)$")
 
 TRUSTED_AUTHORS = [
     '4_pr0n',
@@ -12,6 +17,20 @@ TRUSTED_SUBREDDITS = [
     'pornID',
     'tipofmypenis',
     'UnrealGirls']
+ALLOWED_FILETYPES = (
+    # :orig for twitter cdn
+    '.jpg',
+    '.jpg:orig',
+    '.jpeg',
+    '.jpeg:orig',
+    '.png',
+    '.png:orig',
+    '.gif',
+    '.gif:orig',
+    '.tiff',
+    '.bmp',
+    '.webp'
+)
 
 
 def load_list(filename):
@@ -28,10 +47,25 @@ def save_list(lst, filename):
 
 def should_parse_link(url):
 
-    # TODO: Don't parse links pointing to a whole subreddit,
-    #   Don't parse links pointing to a whole user
-    #   Don't parse links pointing to /message/compose
-    #   Don't parse links pointing to instagram/facebook profiles
+    if url.startswith("/r/") or SUB_RE.match(url):
+        logger.debug('Skipping url %s: Subreddit' % url)
+        return False
+
+    if USER_RE.match(url):
+        logger.debug('Skipping url %s: User' % url)
+        return False
+
+    if "message/compose" in url:
+        logger.debug('Skipping url %s: PM' % url)
+        return False
+
+    if "youtu.be" in url or "youtube.com" in url:
+        logger.debug('Skipping url %s: Youtube' % url)
+        return False
+
+    if "reddit.com/search?q=" in url or "github.com" in url:
+        logger.debug('Skipping url %s: Misc' % url)
+        return False
 
     return True
 
@@ -52,7 +86,7 @@ def get_links_from_body(body):
 def _is_ddl_image(url):
     if '?' in url:
         url = url[:url.find('?')]
-    return url.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.tiff', '.bmp', '.webp'))
+    return url.lower().endswith(ALLOWED_FILETYPES)
 
 
 def is_direct_link(url):
