@@ -29,7 +29,7 @@ class DB:
         self.db_file = db_file
 
         # Don't create tables if not supplied.
-        if schemas is not None and schemas != {} and len(schemas) > 0:
+        if schemas is not None and schemas != {} and schemas:
 
             # Create table for every schema given.
             for key in schemas:

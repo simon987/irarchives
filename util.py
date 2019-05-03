@@ -14,7 +14,6 @@ TRUSTED_SUBREDDITS = [
     'UnrealGirls']
 
 
-
 def load_list(filename):
     with open(filename) as f:
         return [x.strip().lower() for x in f.readlines() if x != "\n"]
@@ -150,8 +149,7 @@ def imgur_get_highest_res(url, web):
     if 'Content-Type' in m and 'image' in m['Content-Type'].lower() and \
             'Content-Length' in m and m['Content-Length'] != '503':
         return temp
-    else:
-        return url
+    return url
 
 
 def is_user_valid(username):

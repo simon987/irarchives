@@ -97,7 +97,7 @@ def search_album(url):
     checked_count = 0
     time_started = time()
     albumids = db.select('id', 'Albums', 'url LIKE "%s"' % url)
-    if len(albumids) > 0:
+    if albumids:
         # Album is already indexed
         albumid = albumids[0][0]
         query_text = 'id IN '
@@ -106,7 +106,8 @@ def search_album(url):
         image_urls = db.select('url', 'ImageURLs', query_text)
         for image_url in image_urls:
             image_url = image_url[0]
-            if time() - time_started > MAX_ALBUM_SEARCH_TIME: break
+            if time() - time_started > MAX_ALBUM_SEARCH_TIME:
+                break
             checked_count += 1
             try:
                 (imgurl, resposts, rescomments, resrelated, downloaded) = \
@@ -120,13 +121,15 @@ def search_album(url):
         # Album is not indexed; need to scrape images
         r = web.get('%s/noscript' % url)
         image_urls = web.between(r, 'img src="//i.', '"')
-        if len(image_urls) == 0:
+        if not image_urls:
             return Response(json.dumps({"error": "empty album"}), mimetype="json")
         # Search stats
         downloaded_count = 0
         for link in image_urls:
-            if downloaded_count >= MAX_ALBUM_SEARCH_DEPTH: break
-            if time() - time_started > MAX_ALBUM_SEARCH_TIME: break
+            if downloaded_count >= MAX_ALBUM_SEARCH_DEPTH:
+                break
+            if time() - time_started > MAX_ALBUM_SEARCH_TIME:
+                break
             link = 'http://i.%s' % link
             if '?' in link:
                 link = link[:link.find('?')]
@@ -319,10 +322,12 @@ def search_google(url):
             for split in splits:
                 if split.startswith('amp;'):
                     break
-                if image != '': image += '&'
+                if image != '':
+                    image += '&'
                 image += split
             # Launch thread
-            while GOOGLE_THREAD_COUNT >= GOOGLE_THREAD_MAX: sleep(0.1)
+            while GOOGLE_THREAD_COUNT >= GOOGLE_THREAD_MAX:
+                sleep(0.1)
             if time() < time_to_stop:
                 args = (image, time_to_stop)
                 t = Thread(target=handle_google_result, args=args)
@@ -342,7 +347,8 @@ def search_google(url):
     comments = []
     related = []
     # Wait for threads to finish
-    while GOOGLE_THREAD_COUNT > 0: sleep(0.1)
+    while GOOGLE_THREAD_COUNT > 0:
+        sleep(0.1)
     # Iterate over results
     for (image_url, image_hash, downloaded) in GOOGLE_RESULTS:
         # hashid = get_hashid_from_hash(image_hash)
@@ -400,7 +406,7 @@ def get_results_tuple_for_image(url):
         if hashid == -1 or hashid == 870075:  # No hash matches
             return url, [], [], [], downloaded
         image_hashes = db.select('hash', 'Hashes', 'id = %d' % hashid)
-        if len(image_hashes) == 0:
+        if not image_hashes:
             raise Exception('could not get hash for %s' % url)
         image_hash = image_hashes[0][0]
     except Exception as e:
@@ -463,8 +469,8 @@ def get_hash(url, timeout=10):
         Does not modify DB! (read only)
     """
     # Download image
-    (file, temp_image) = tempfile.mkstemp(prefix='redditimg', suffix='.jpg')
-    close(file)
+    (tmpfile, temp_image) = tempfile.mkstemp(prefix='redditimg', suffix='.jpg')
+    close(tmpfile)
     if not web.download(url, temp_image, timeout=timeout):
         raise Exception('unable to download image at %s' % url)
 
@@ -487,7 +493,7 @@ def get_hash(url, timeout=10):
 
 def get_hashid_from_hash(image_hash):
     hashids = db.select('id', 'Hashes', 'hash = "%s"' % image_hash)
-    if len(hashids) == 0:
+    if not hashids:
         return -1
     return hashids[0][0]
 
@@ -499,12 +505,12 @@ def get_hashid(url, timeout=10):
         Does not modify DB! (read only)
     """
     existing = db.select('hashid', 'ImageURLs', 'url LIKE "%s"' % url)
-    if len(existing) > 0:
+    if existing:
         return existing[0][0], False
 
     # Download image
-    (file, temp_image) = tempfile.mkstemp(prefix='redditimg', suffix='.jpg')
-    close(file)
+    (tmpfile, temp_image) = tempfile.mkstemp(prefix='redditimg', suffix='.jpg')
+    close(tmpfile)
     if not web.download(url, temp_image, timeout=timeout):
         raise Exception('unable to download image at %s' % url)
 
@@ -524,7 +530,7 @@ def get_hashid(url, timeout=10):
         raise e
 
     hashids = db.select('id', 'Hashes', 'hash = "%s"' % image_hash)
-    if len(hashids) == 0:
+    if not hashids:
         return -1, True
     return hashids[0][0], True
 

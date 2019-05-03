@@ -15,7 +15,7 @@ The repo contains:
 
 Requirements
 ------------
-Tested with Python 2.6.x. Should work with 2.7 and possibly 2.5 (not compatible with 2.4 due to JSON limitations).
+Tested with Python 3.7.2.
 
 The image calculations require Python Imaging Library, or [PIL](http://www.pythonware.com/products/pil/).
 

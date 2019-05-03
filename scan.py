@@ -12,7 +12,8 @@ import tempfile
 import time
 from os import path, close, remove
 from subprocess import getstatusoutput
-from sys import exit
+
+import sys
 
 import ReddiWrap
 from DB import DB
@@ -114,13 +115,13 @@ def main():
                 # Load subreddits to check the top?t=week of, or load
                 # all subs from the masterlist if found to be empty.
                 subreddits = load_list('subs_%s.txt' % timeframe)
-                if len(subreddits) == 0:
+                if not subreddits:
                     subreddits = load_list('subs.txt')
             else:
                 # Only load subs from all/month, don't load more if the
                 # lists are found to be empty
                 subreddits = load_list('subs_%s.txt' % timeframe)
-            while len(subreddits) > 0:
+            while subreddits:
                 # Grab all images/comments from sub, remove from list
                 parse_subreddit(subreddits.pop(0), timeframe)
                 # Save current list in case script needs to be restarted
@@ -136,7 +137,7 @@ def exit_if_already_started():
             running_processes += 1
     if running_processes > 1:
         logger.error("process is already running, exiting")
-        exit(0)
+        sys.exit(0)
 
 
 def reddit_login():
@@ -185,7 +186,7 @@ def parse_subreddit(subreddit, timeframe):
             # No more pages to load
             break
 
-        if posts is None or len(posts) == 0:
+        if posts is None or not posts:
             logger.warning('no posts found')
             return
 
@@ -257,7 +258,7 @@ def parse_comment(comment, postid):
         Recursively parses child comments.
     """
     urls = get_links_from_body(comment.body)
-    if len(urls) > 0:
+    if urls:
         # Only insert comment into DB if it contains a link
         comid_db = db.insert('Comments',
                              (None,
@@ -295,7 +296,6 @@ def parse_url(url, postid=0, commentid=0):
 
     for image_url in image_urls:
         parse_image(image_url, postid, commentid, albumid)
-    db.commit()
     return True
 
 
@@ -330,7 +330,7 @@ def get_hashid_and_urlid(url):
         3rd tuple is True if downloading of image was required
     """
     existing = db.select('id, hashid', 'ImageURLs', 'url LIKE "%s"' % url)
-    if len(existing) > 0:
+    if existing:
         urlid = existing[0][0]
         hashid = existing[0][1]
         return hashid, urlid, False
@@ -370,7 +370,7 @@ def get_hashid_and_urlid(url):
     if hashid == -1:
         # Already exists, need to lookup existing hash
         hashids = db.select('id', 'Hashes', 'hash = "%s"' % (image_hash,))
-        if len(hashids) == 0:
+        if not hashids:
             try:
                 remove(temp_image)
             except:
@@ -382,7 +382,6 @@ def get_hashid_and_urlid(url):
     try:
         filesize = path.getsize(temp_image)
         urlid = db.insert('ImageURLs', (None, url, hashid, width, height, filesize))
-        db.commit()
         create_thumb(temp_image, urlid)  # Make a thumbnail!
         logger.debug('Done')
     except Exception as e:
@@ -417,7 +416,7 @@ def check_and_drain_queue():
     with open('index_queue.lst', 'w') as f:
         f.write('')
 
-    if len(items) == 0:
+    if not items:
         return
 
     logger.info('found %d images to index' % len(items))

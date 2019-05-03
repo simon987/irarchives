@@ -15,34 +15,12 @@ TODO:
 
 """
 
-from Httpy import Httpy  # Class for communicating with the web server.
-
-from sys import exit
-
 import json
-
 from datetime import date  # For converting unix epoch time in seconds to date/time
+from pprint import pprint
 from time import time  # For getting current... and possibly throttling requests
 
-
-def pretty_string(dict, indent=0):
-    """
-        Returns string containing all keys and values in a dict. Makes it 'Pretty'.
-    """
-    result = []
-    for key, value in dict.iteritems():
-        if isinstance(value, unicode):
-            result.append('\t' * indent + ('%s:\t "%s"' % (key, value)).encode('ascii', 'ignore'))
-        elif isinstance(value, list):
-            if len(value) == 0:
-                result.append('\t' * indent + '%s:\t []' % key)
-            else:
-                result.append('\t' * indent + '%s:\t' % key)
-                for element in dict[key]:
-                    result.append(pretty_string(element.__dict__, indent + 1))
-        else:
-            result.append('\t' * indent + '%s:\t "%s"' % (key, value))
-    return '\n'.join(result)
+from Httpy import Httpy  # Class for communicating with the web server.
 
 
 class Post(object):
@@ -134,7 +112,7 @@ class Post(object):
 
     def verbose(self):
         """ Returns string containing all fields and their values. Verbose. """
-        return pretty_string(self.__dict__)
+        return pprint(self.__dict__)
 
 
 class Comment(object):
@@ -224,7 +202,7 @@ class Comment(object):
 
     def verbose(self):
         """ Returns string containing all fields and their values. Verbose. """
-        return pretty_string(self.__dict__)
+        return pprint(self.__dict__)
 
 
 class UserInfo(object):
@@ -248,7 +226,7 @@ class UserInfo(object):
 
     def __repr__(self):
         """ Returns string containing all fields and their values. Verbose. """
-        return pretty_string(self.__dict__)
+        return pprint(self.__dict__)
 
 
 class Subreddit(object):
@@ -274,7 +252,7 @@ class Subreddit(object):
 
     def __repr__(self):
         """ Returns string containing all fields and their values. Verbose. """
-        return pretty_string(self.__dict__)
+        return pprint(self.__dict__)
 
 
 class Message(object):
@@ -322,7 +300,7 @@ class Message(object):
 
     def verbose(self):
         """ Returns string containing all fields and their values. Verbose. """
-        return pretty_string(self.__dict__)
+        return pprint(self.__dict__)
 
 
 class ReddiWrap:
@@ -382,12 +360,9 @@ class ReddiWrap:
         self.user = user
         self.password = password
 
-        dict = {}
-        dict['user'] = self.user
-        dict['passwd'] = self.password
-        dict['api_type'] = 'json'
+        data = {'user': self.user, 'passwd': self.password, 'api_type': 'json'}
 
-        r = self.web.post('http://www.reddit.com/api/login/%s' % self.user, dict)
+        r = self.web.post('http://www.reddit.com/api/login/%s' % self.user, data)
         if "WRONG_PASSWORD" in r:
             # Invalid password
             return 1
@@ -439,7 +414,7 @@ class ReddiWrap:
         # Get does not like 'www.' for some reason.
         result = result.replace('www.reddit.com', 'reddit.com')
 
-        if not '.json' in result:
+        if '.json' not in result:
             q = result.find('?')
             if q == -1:
                 result += '.json'
@@ -589,14 +564,14 @@ class ReddiWrap:
         """
         if self.modhash == '':
             return False  # Modhash required to vote
-        dict = {}
+        data = {}
         if isinstance(post, Post):
-            dict['id'] = 't3_%s' % post.id
+            data['id'] = 't3_%s' % post.id
         else:
-            dict['id'] = 't1_%s' % post.id
-        dict['dir'] = str(direction)
-        dict['uh'] = self.modhash
-        response = self.web.post('http://www.reddit.com/api/vote', dict)
+            data['id'] = 't1_%s' % post.id
+        data['dir'] = str(direction)
+        data['uh'] = self.modhash
+        response = self.web.post('http://www.reddit.com/api/vote', data)
         # Reddit should respond with '{}' if vote was successful.
         return response == '{}'
 
@@ -649,18 +624,16 @@ class ReddiWrap:
             TODO Return a new Comment/Message object, containing expected values.
         """
         result = {}
-        dict = {}
-        dict['uh'] = self.modhash
-        dict['text'] = text
+        data = {'uh': self.modhash, 'text': text}
 
         if isinstance(post, Post):
-            dict['thing_id'] = 't3_%s' % post.id
+            data['thing_id'] = 't3_%s' % post.id
         elif isinstance(post, Comment):
-            dict['parent'] = 't1_%s' % post.id
+            data['parent'] = 't1_%s' % post.id
         elif isinstance(post, Message):
-            dict['thing_id'] = post.name
+            data['thing_id'] = post.name
 
-        response = self.web.post('http://www.reddit.com/api/comment', dict)
+        response = self.web.post('http://www.reddit.com/api/comment', data)
         if '".error.USER_REQUIRED"' in response:
             return result
         # Extract appropriate dict out of response
@@ -669,10 +642,10 @@ class ReddiWrap:
         if jquery is None:
             return result
 
-        for i in xrange(0, len(jquery)):
-            if not isinstance(jquery[i][3], list) or len(jquery[i][3]) == 0:
+        for i in range(0, len(jquery)):
+            if not isinstance(jquery[i][3], list) or not jquery[i][3]:
                 continue
-            if not isinstance(jquery[i][3][0], list) or len(jquery[i][3][0]) == 0:
+            if not isinstance(jquery[i][3][0], list) or not jquery[i][3][0]:
                 continue
             jdict = jquery[i][3][0][0]
             result = jdict.get('data')
@@ -738,7 +711,8 @@ class ReddiWrap:
         else:
             nav_text = 'before'
             nav_id = self.before
-        if nav_id is None: return []  # No previous/next link to navigate with.
+        if nav_id is None:
+            return []  # No previous/next link to navigate with.
         url = self.last_url
         # Strip out after/before params from the previous URL.
         if '?before' in url:
@@ -793,16 +767,11 @@ class ReddiWrap:
             Returns permalink of EXISTING link (with ?already_submitted=true) if the link already exists.
             Returns '' if unable to post (not logged in, unverified email).
         """
-        if not self.logged_in: return ''
-        dict = {}
-        dict['uh'] = self.modhash
-        dict['kind'] = 'link'
-        dict['url'] = link
-        dict['sr'] = subreddit
-        dict['title'] = title
-        dict['r'] = subreddit
-        dict['renderstyle'] = 'html'
-        response = self.web.post('http://www.reddit.com/api/submit', dict)
+        if not self.logged_in:
+            return ''
+        data = {'uh': self.modhash, 'kind': 'link', 'url': link, 'sr': subreddit, 'title': title, 'r': subreddit,
+                'renderstyle': 'html'}
+        response = self.web.post('http://www.reddit.com/api/submit', data)
         if "You haven't verified your email address" in response:
             return ''
 
@@ -823,17 +792,9 @@ class ReddiWrap:
             Returns permalink to post if successful, e.g. 'r/Subreddit/comments/id/title'
             Returns '' if unable to post (not logged in, unverified email)
         """
-        dict = {}
-        dict['uh'] = self.modhash
-        dict['title'] = title
-        dict['kind'] = 'self'
-        dict['thing_id'] = ''
-        dict['text'] = text
-        dict['sr'] = subreddit
-        dict['id'] = '#newlink'
-        dict['r'] = subreddit
-        dict['renderstyle'] = 'html'
-        response = self.web.post('http://www.reddit.com/api/submit', dict)
+        data = {'uh': self.modhash, 'title': title, 'kind': 'self', 'thing_id': '', 'text': text, 'sr': subreddit,
+                'id': '#newlink', 'r': subreddit, 'renderstyle': 'html'}
+        response = self.web.post('http://www.reddit.com/api/submit', data)
         if "You haven't verified your email address" in response:
             return ''
         link = self.web.between(response, 'call", ["http://www.reddit.com/', '"]')[0]
@@ -847,24 +808,15 @@ class ReddiWrap:
             Sends PM to recipient.
             Returns True if message was sent successfully, False otherwise.
         """
-        dict = {}
-        dict['id'] = '#compose-message'
-        dict['uh'] = self.modhash
-        dict['to'] = recipient
-        dict['text'] = message
-        dict['subject'] = subject
-        dict['thing-id'] = ''
-        dict['renderstyle'] = 'html'
-        r = self.web.post('http://www.reddit.com/api/compose', dict)
+        data = {'id': '#compose-message', 'uh': self.modhash, 'to': recipient, 'text': message, 'subject': subject,
+                'thing-id': '', 'renderstyle': 'html'}
+        r = self.web.post('http://www.reddit.com/api/compose', data)
         return 'your message has been delivered' in r
 
     def mark_message(self, message, mark_as_read=True):
         """ Marks passed message as either 'read' or 'unread' depending on mark_as_read's value """
-        dict = {}
-        dict['id'] = message.name
-        dict['uh'] = self.modhash
-        dict['renderstyle'] = 'html'
-        r = self.web.post('http://www.reddit.com/api/read_message', dict)
+        data = {'id': message.name, 'uh': self.modhash, 'renderstyle': 'html'}
+        r = self.web.post('http://www.reddit.com/api/read_message', data)
         message.new = not mark_as_read
 
     ########################
@@ -895,102 +847,68 @@ class ReddiWrap:
             js = json.loads(r)
         except ValueError:
             return None  # If it's not JSON, we can't parse it.
-        if js == None:
+        if js is None:
             return None
         return UserInfo(js.get('data'))
 
     def save(self, post):
         """ Saves Post to user account. "post" is the actual Post object to save. """
-        dict = {}
-        dict['id'] = post.id
-        dict['uh'] = self.modhash
-        response = self.web.post('http://www.reddit.com/api/save', dict)
+        data = {'id': post.id, 'uh': self.modhash}
+        response = self.web.post('http://www.reddit.com/api/save', data)
         return response == '{}'
 
     def unsave(self, post):
         """ Un-saves Post from user account. "post" is the actual Post object to un-save. """
-        dict = {}
-        dict['id'] = post.id
-        dict['uh'] = self.modhash
-        response = self.web.post('http://www.reddit.com/api/unsave', dict)
+        data = {'id': post.id, 'uh': self.modhash}
+        response = self.web.post('http://www.reddit.com/api/unsave', data)
         return response == '{}'
 
     def hide(self, post):
         """ Hides Post from user's visibility. "post" is the actual Post object to hide. """
-        dict = {}
-        dict['id'] = post.id
-        dict['uh'] = self.modhash
-        dict['executed'] = 'hidden'
-        response = self.web.post('http://www.reddit.com/api/hide', dict)
+        data = {'id': post.id, 'uh': self.modhash, 'executed': 'hidden'}
+        response = self.web.post('http://www.reddit.com/api/hide', data)
         return response == '{}'
 
     def unhide(self, post):
         """ Un-hides Post from user's visibility. "post" is the actual Post object to un-hide. """
-        dict = {}
-        dict['id'] = post.id
-        dict['uh'] = self.modhash
-        dict['executed'] = 'unhidden'
-        response = self.web.post('http://www.reddit.com/api/unhide', dict)
+        data = {'id': post.id, 'uh': self.modhash, 'executed': 'unhidden'}
+        response = self.web.post('http://www.reddit.com/api/unhide', data)
         return response == '{}'
 
     def report(self, post):
         """ Reports a post or comment to the mods of the current subreddit. """
-        dict = {}
-        dict['id'] = post.name
-        dict['uh'] = self.modhash
-        dict['r'] = post.subreddit
-        dict['executed'] = 'reported'
-        dict['renderstyle'] = 'html'
-        r = self.web.post('http://www.reddit.com/api/report', dict)
+        data = {'id': post.name, 'uh': self.modhash, 'r': post.subreddit, 'executed': 'reported', 'renderstyle': 'html'}
+        r = self.web.post('http://www.reddit.com/api/report', data)
         return r == '{}'
 
     def share(self, post, from_username, from_email, to_email, message):
         """ Share a post with someone via email. """
-        dict = {}
-        dict['id'] = '#sharelink_' + post.name
-        dict['uh'] = self.modhash
-        dict['r'] = post.subreddit
-        dict['parent'] = post.name
-        dict['message'] = message
-        dict['replyto'] = from_email
-        dict['share_to'] = to_email
-        dict['share_from'] = from_username
-        dict['renderstyle'] = 'html'
-        r = self.web.post('http://www.reddit.com/api/share', dict)
+        data = {'id': '#sharelink_' + post.name, 'uh': self.modhash, 'r': post.subreddit, 'parent': post.name,
+                'message': message, 'replyto': from_email, 'share_to': to_email, 'share_from': from_username,
+                'renderstyle': 'html'}
+        r = self.web.post('http://www.reddit.com/api/share', data)
         return 'your link has been shared' in r
 
     def mark_nsfw(self, post):
         """ Marks a Post as NSFW. """
-        dict = {}
-        dict['id'] = post.name
-        dict['uh'] = self.modhash
-        dict['r'] = post.subreddit
-        dict['renderstyle'] = 'html'
-        r = self.web.post('http://www.reddit.com/api/marknsfw', dict)
+        data = {'id': post.name, 'uh': self.modhash, 'r': post.subreddit, 'renderstyle': 'html'}
+        r = self.web.post('http://www.reddit.com/api/marknsfw', data)
         return r == '{}'
 
     def unmark_nsfw(self, post):
         """ Removes NSFW mark from a Post. """
-        dict = {}
-        dict['id'] = post.name
-        dict['uh'] = self.modhash
-        dict['r'] = post.subreddit
-        dict['renderstyle'] = 'html'
-        r = self.web.post('http://www.reddit.com/api/unmarknsfw', dict)
+        data = {'id': post.name, 'uh': self.modhash, 'r': post.subreddit, 'renderstyle': 'html'}
+        r = self.web.post('http://www.reddit.com/api/unmarknsfw', data)
         return r == '{}'
 
     def subscribe(self, subreddit, unsub=False):
         """ Subscribes (or unsubscribes) user to/from subreddit. """
-        dict = {}
-        dict['sr'] = subreddit.name
-        dict['uh'] = self.modhash
-        dict['r'] = subreddit.display_name
-        dict['renderstyle'] = 'html'
+        data = {'sr': subreddit.name, 'uh': self.modhash, 'r': subreddit.display_name, 'renderstyle': 'html'}
         if not unsub:
-            dict['action'] = 'sub'
+            data['action'] = 'sub'
         else:
-            dict['action'] = 'unsub'
-        r = self.web.post('http://www.reddit.com/api/subscribe', dict)
+            data['action'] = 'unsub'
+        r = self.web.post('http://www.reddit.com/api/subscribe', data)
         return r == '{}'
 
     #############
@@ -999,48 +917,31 @@ class ReddiWrap:
 
     def spam(self, post):
         """ Marks a Post (or Comment) as 'spam'. """
-        dict = {}
-        dict['id'] = post.name
-        dict['uh'] = self.modhash
-        dict['r'] = post.subreddit
-        dict['renderstyle'] = 'html'
-        r = self.web.post('http://www.reddit.com/api/remove', dict)
+        data = {'id': post.name, 'uh': self.modhash, 'r': post.subreddit, 'renderstyle': 'html'}
+        r = self.web.post('http://www.reddit.com/api/remove', data)
         return r == '{}'
 
     def approve(self, post):
         """ Un-removes ('approves') a Post or Comment. """
-        dict = {}
-        dict['id'] = post.name
-        dict['uh'] = self.modhash
-        dict['r'] = post.subreddit
-        dict['renderstyle'] = 'html'
-        r = self.web.post('http://www.reddit.com/api/approve', dict)
+        data = {'id': post.name, 'uh': self.modhash, 'r': post.subreddit, 'renderstyle': 'html'}
+        r = self.web.post('http://www.reddit.com/api/approve', data)
         return r == '{}'
 
     def remove(self, post):
         """ Removes a Post or Comment from public view. """
-        dict = {}
-        dict['id'] = post.name
-        dict['uh'] = self.modhash
-        dict['r'] = post.subreddit
-        dict['spam'] = 'False'
-        dict['renderstyle'] = 'html'
-        r = self.web.post('http://www.reddit.com/api/remove', dict)
+        data = {'id': post.name, 'uh': self.modhash, 'r': post.subreddit, 'spam': 'False', 'renderstyle': 'html'}
+        r = self.web.post('http://www.reddit.com/api/remove', data)
         return r == '{}'
 
     def distinguish(self, post, turn_on=True):
         """ Distinguishes a Post or Comment with moderator flair. """
-        dict = {}
-        dict['id'] = post.name
-        dict['uh'] = self.modhash
-        dict['r'] = post.subreddit
-        dict['renderstyle'] = 'html'
+        data = {'id': post.name, 'uh': self.modhash, 'r': post.subreddit, 'renderstyle': 'html'}
         url = 'http://www.reddit.com/api/distinguish/'
         if turn_on:
             url += 'yes'
         else:
             url += 'no'
-        r = self.web.post(url, dict)
+        r = self.web.post(url, data)
         return r != ''
 
     def approved_submitter(self, subreddit, username, add_user=True):
@@ -1049,21 +950,14 @@ class ReddiWrap:
             subreddit is a Subreddit object! Must have .name and .display_name
             Must be logged in as a moderator of the Subreddit.
         """
-        dict = {}
-        dict['id'] = '#contributor'
-        dict['uh'] = self.modhash
-        dict['r'] = subreddit.display_name
-        dict['name'] = username
-        dict['type'] = 'contributor'
-        dict['action'] = 'add'
-        dict['container'] = subreddit.name
-        dict['renderstyle'] = 'html'
+        data = {'id': '#contributor', 'uh': self.modhash, 'r': subreddit.display_name, 'name': username,
+                'type': 'contributor', 'action': 'add', 'container': subreddit.name, 'renderstyle': 'html'}
         url = 'http://www.reddit.com/api/'
         if add_user:
             url += 'friend'
         else:
             url += 'unfriend'
-        r = self.web.post(url, dict)
+        r = self.web.post(url, data)
         return r != ''
 
     def moderator(self, subreddit, username):
@@ -1072,21 +966,14 @@ class ReddiWrap:
             subreddit is a Subreddit object! Must have .name and .display_name
             Must be logged in as a moderator of the Subreddit.
         """
-        dict = {}
-        dict['id'] = '#moderator'
-        dict['uh'] = self.modhash
-        dict['r'] = subreddit.display_name
-        dict['name'] = username
-        dict['type'] = 'moderator'
-        dict['action'] = 'add'
-        dict['container'] = subreddit.name
-        dict['renderstyle'] = 'html'
+        data = {'id': '#moderator', 'uh': self.modhash, 'r': subreddit.display_name, 'name': username,
+                'type': 'moderator', 'action': 'add', 'container': subreddit.name, 'renderstyle': 'html'}
         url = 'http://www.reddit.com/api/'
         if add_user:
             url += 'friend'
         else:
             url += 'unfriend'
-        r = self.web.post(url, dict)
+        r = self.web.post(url, data)
         return r != ''
 
     def time_to_date(self, seconds):
