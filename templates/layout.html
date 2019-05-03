@@ -48,7 +48,7 @@
         <div class="card-content">
 
             <ul id="rri_menu" class="tabs">
-                <li class="tab col s3"><a href="#rri_menu_stats">Database Statistics</a></li>
+                <li class="tab col s3"><a href="#rri_menu_stats">Statistics</a></li>
                 <li class="tab col s3"><a href="#rri_menu_subs">Subreddits</a></li>
                 <li class="tab col s3"><a href="#rri_menu_about">About</a></li>
             </ul>
@@ -375,6 +375,17 @@
         return el;
     }
 
+    function mkExtSearchLinksMobile(url) {
+
+        const el = document.createElement('div');
+        el.setAttribute('class', 'reverse_links');
+        el.appendChild(mkButton(`https://images.google.com/searchbyimage?image_url=${url}`, 'Google'));
+        el.appendChild(mkButton(`https://www.tineye.com/search?pluginver=bookmark_1.0&url=${url}`, 'TinEye'));
+        el.appendChild(mkButton(`https://www.karmadecay.com/${url.replace('http:', '').replace('https:', '')}`, 'KarmaDecay'));
+
+        return el;
+    }
+
     function makePost(post) {
 
         const card = document.createElement('div');
@@ -435,6 +446,7 @@
         cardContent.appendChild(contentWrapper);
         contentWrapper.appendChild(left);
         contentWrapper.appendChild(right);
+        contentWrapper.appendChild(mkExtSearchLinksMobile(post.imageurl));
 
         return card;
     }
@@ -474,7 +486,7 @@
             actions.appendChild(mkLink(comment.imageurl,
                 `⛶ ${comment.width}x${comment.height} ${bytes_to_readable(comment.size)}`
             ));
-        }
+       }
 
         card.appendChild(cardContent);
         cardContent.appendChild(contentWrapper);
@@ -495,6 +507,14 @@
     function mkLink(href, text, target = "_blank") {
         const el = document.createElement('a');
         el.setAttribute('href', href);
+        el.setAttribute('target', target);
+        el.appendChild(document.createTextNode(text));
+        return el
+    }
+    function mkButton(href, text, target = "_blank") {
+        const el = document.createElement('a');
+        el.setAttribute('href', href);
+        el.setAttribute('class', 'waves-effect waves-light btn');
         el.setAttribute('target', target);
         el.appendChild(document.createTextNode(text));
         return el

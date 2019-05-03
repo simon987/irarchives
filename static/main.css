@@ -137,11 +137,43 @@ footer a {
     color: #CFD8DC;
 }
 
+
+@media (min-width: 700px) and (max-width: 1500px) {
+    .card.horizontal .card-action {
+        display: none;
+    }
+    .card.horizontal .reverse_links {
+        display: inherit;
+    }
+}
+
 @media (max-width: 700px) {
     .card.horizontal {
         display: block;
     }
     .card.horizontal .card-image {
         max-width: inherit;
+        width: 100%;
+    }
+    .card.horizontal .card-image img {
+        width: inherit;
+    }
+    .reverse_links {
+        display: none;
     }
 }
+
+@media (min-width: 1501px) {
+    .reverse_links {
+        display: none;
+    }
+    .card.horizontal .card-action {
+        display: inherit;
+    }
+}
+
+.reverse_links .btn {
+    margin-right: 0.5em;
+    margin-top: 0.5em;
+}
+

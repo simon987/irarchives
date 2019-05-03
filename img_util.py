@@ -7,6 +7,8 @@ def get_image_urls(url):
 
     result = set()
 
+    logger.debug('Getting urls from %s ...' % (url, ))
+
     try:
         cmd_res = check_output(['gallery-dl', '-g', '-q',  url]).decode()
         for image_url in cmd_res.split('\n'):

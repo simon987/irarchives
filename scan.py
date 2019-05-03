@@ -10,6 +10,8 @@ What this script does:
 
 import tempfile
 import time
+from itertools import repeat
+from multiprocessing.pool import ThreadPool
 from os import path, close, remove
 from subprocess import getstatusoutput
 
@@ -296,8 +298,15 @@ def parse_url(url, postid=0, commentid=0):
             albumids = db.select('id', 'Albums', 'url LIKE "%s"' % url)
             albumid = albumids[0][0]
 
-    for image_url in image_urls:
-        parse_image(image_url, postid, commentid, albumid)
+    if len(image_urls) > 10:
+        logger.debug("Using multithreading to download large album")
+        pool = ThreadPool(processes=8)
+        pool.starmap(func=parse_image,
+                     iterable=zip(image_urls, repeat(postid), repeat(commentid), repeat(albumid)))
+        pool.close()
+    else:
+        for image_url in image_urls:
+            parse_image(image_url, postid, commentid, albumid)
     return True
 
 
@@ -353,7 +362,7 @@ def get_hashid_and_urlid(url):
         if width > 10000 or height > 10000:
             logger.error('Image too large to hash (%dx%d' % (width, height))
             raise Exception('too large to hash (%dx%d)' % (width, height))
-        if width == 130 and height == 60:
+        if (width == 130 and height == 60) or (width == 131 and height == 81):
             # Size of empty imgur image ('not found!')
             raise Exception('Found 404 image dimensions (130x60)')
         image_hash = str(avhash(temp_image))
