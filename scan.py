@@ -178,25 +178,25 @@ def parse_subreddit(subreddit, timeframe):
         check_and_drain_queue()
         query_text = '/r/%s/top?t=%s' % (subreddit, timeframe)
         if total_post_count == 0:
-            logger.info('loading first page of %s' % query_text)
+            logger.info('Loading first page of %s' % query_text)
             posts = reddit.get(query_text)
 
         elif reddit.has_next():
-            logger.info('[+] loading  next page of %s' % query_text)
+            logger.info('[+] Loading  next page of %s' % query_text)
             posts = reddit.get_next()
         else:
             # No more pages to load
             break
 
         if posts is None or not posts:
-            logger.warning('no posts found')
+            logger.warning('No posts found')
             return
 
         total_post_count += len(posts)
 
         for post in posts:
             current_post_index += 1
-            logger.info('[%3d/%3d] scraping http://redd.it/%s %s' %
+            logger.info('[%3d/%3d] Scraping http://redd.it/%s %s' %
                         (current_post_index, total_post_count, post.id, post.url[:50]))
 
             if parse_post(post):  # Returns True if we made a request to reddit
@@ -208,7 +208,7 @@ def parse_subreddit(subreddit, timeframe):
 def parse_post(post):
     """ Scrapes and indexes a post and it's comments. """
     # Ignore posts less than 24 hours old
-    if time.time() - post.created < 60 * 60 * 24:  # TODO: config
+    if time.time() - post.created < 60 * 60 * 24:
         logger.debug('Ignoring post (too new)')
         return False
 
@@ -354,13 +354,13 @@ def get_hashid_and_urlid(url):
     logger.debug('Downloading %s ...' % url)
     if not web.download(url, temp_image):
         logger.debug('Failed')
-        raise Exception('unable to download image at %s' % url)
+        raise Exception('Unable to download image at %s' % url)
     # Get image hash
     try:
         logger.debug('Hashing ...')
         (width, height) = dimensions(temp_image)
         if width > 10000 or height > 10000:
-            logger.error('Image too large to hash (%dx%d' % (width, height))
+            logger.error('Image too large to hash (%dx%d)' % (width, height))
             raise Exception('too large to hash (%dx%d)' % (width, height))
         if (width == 130 and height == 60) or (width == 131 and height == 81):
             # Size of empty imgur image ('not found!')

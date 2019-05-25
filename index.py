@@ -10,4 +10,4 @@ def favicon():
 
 @index_page.route("/")
 def index():
-    return render_template("layout.html")
+    return render_template("index.html")

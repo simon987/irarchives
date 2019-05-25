@@ -10,7 +10,7 @@ from flask import Blueprint, Response, request
 from DB import DB
 from Httpy import Httpy
 from ImageHash import avhash
-from util import sanitize_url, imgur_get_highest_res, sort_by_ranking, is_user_valid
+from util import clean_url, sort_by_ranking, is_user_valid
 
 search_page = Blueprint('search', __name__, template_folder='templates')
 
@@ -35,10 +35,6 @@ def search():
     if query.startswith('cache:'):
         return search_cache(query[len('cache:'):])
 
-    # ???
-    elif 'imgur.com/a/' in query:
-        return search_album(query)
-
     # User
     elif query.startswith('user:'):
         return search_user(query[len('user:'):])
@@ -54,7 +50,6 @@ def search():
         return search_text(query[len('text:'):])
 
     # Post?
-    # TODO: Extract vvvvvvvvvvvvvvvvvvvvvvvvvvvv
     elif 'reddit.com/r/' in query and '/comments/' in query:
         # Reddit post
         if not query.endswith('.json'):
@@ -75,90 +70,6 @@ def search():
         'posts': posts,
         'comments': comments,
         'url': query,
-        'related': related
-    }), mimetype="application/json")
-    # ^^^^^^^^^^^^^^^^^^^^^^
-
-
-def search_album(url):
-    url = url.replace('http://', '').replace('https://', '').replace('m.imgur.com', 'imgur.com')
-    while url.endswith('/'):
-        url = url[:-1]
-    while url.count('/') > 2:
-        url = url[:url.rfind('/')]
-    if '?' in url:
-        url = url[:url.find('?')]
-    if '#' in url:
-        url = url[:url.find('#')]
-    url = 'http://%s' % url  # How the URL will be stored in the DB
-    posts = []
-    comments = []
-    related = []
-    checked_count = 0
-    time_started = time()
-    albumids = db.select('id', 'Albums', 'url LIKE "%s"' % url)
-    if albumids:
-        # Album is already indexed
-        albumid = albumids[0][0]
-        query_text = 'id IN '
-        query_text += '(SELECT DISTINCT urlid FROM Images '
-        query_text += 'WHERE albumid = %d)' % albumid
-        image_urls = db.select('url', 'ImageURLs', query_text)
-        for image_url in image_urls:
-            image_url = image_url[0]
-            if time() - time_started > MAX_ALBUM_SEARCH_TIME:
-                break
-            checked_count += 1
-            try:
-                (imgurl, resposts, rescomments, resrelated, downloaded) = \
-                    get_results_tuple_for_image(image_url)
-                merge_results(posts, resposts)
-                merge_results(comments, rescomments)
-                merge_results(related, resrelated)
-            except:
-                continue
-    else:
-        # Album is not indexed; need to scrape images
-        r = web.get('%s/noscript' % url)
-        image_urls = web.between(r, 'img src="//i.', '"')
-        if not image_urls:
-            return Response(json.dumps({"error": "empty album"}), mimetype="json")
-        # Search stats
-        downloaded_count = 0
-        for link in image_urls:
-            if downloaded_count >= MAX_ALBUM_SEARCH_DEPTH:
-                break
-            if time() - time_started > MAX_ALBUM_SEARCH_TIME:
-                break
-            link = 'http://i.%s' % link
-            if '?' in link:
-                link = link[:link.find('?')]
-            if '#' in link:
-                link = link[:link.find('#')]
-            link = imgur_get_highest_res(link, web)
-            checked_count += 1
-            try:
-                (imgurl, resposts, rescomments, resrelated, downloaded) = \
-                    get_results_tuple_for_image(link)
-                if downloaded: downloaded_count += 1
-                merge_results(posts, resposts)
-                merge_results(comments, rescomments)
-                merge_results(related, resrelated)
-            except:
-                continue
-        # Add album images to queue, to be parsed by backend scraper
-        f = open('index_queue.lst', 'a')
-        f.write('http://i.%s\n' % '\nhttp://i.'.join(image_urls))
-        f.flush()
-        f.close()
-
-    return Response(json.dumps({
-        'url': url,
-        'checked': checked_count,
-        'total': len(image_urls),
-        'cached': len(albumids) > 0,
-        'posts': posts,
-        'comments': comments,
         'related': related
     }), mimetype="application/json")
 
@@ -227,7 +138,7 @@ def search_cache(url):
         can be retrieved via this method (sometimes)
     """
     try:
-        url = sanitize_url(url, web)
+        url = clean_url(url)
     except Exception as e:
         return Response(json.dumps({"error": str(e)}), mimetype="application/json")
     images = []
@@ -399,7 +310,6 @@ def handle_google_result(url, time_to_stop):
 # Helper methods
 def get_results_tuple_for_image(url):
     """ Returns tuple of posts, comments, related for an image """
-    url = sanitize_url(url, web)
 
     try:
         (hashid, downloaded) = get_hashid(url)
@@ -504,7 +414,8 @@ def get_hashid(url, timeout=10):
         Returns -1 if the image's hash was not found in the table.
         Does not modify DB! (read only)
     """
-    existing = db.select('hashid', 'ImageURLs', 'url LIKE "%s"' % url)
+    cleaned_url = clean_url(url)
+    existing = db.select('hashid', 'ImageURLs', 'url LIKE "%s"' % cleaned_url)
     if existing:
         return existing[0][0], False
 

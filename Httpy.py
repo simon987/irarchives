@@ -1,3 +1,5 @@
+from time import sleep
+
 import requests
 
 DEFAULT_USERAGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:19.0) Gecko/20100101 Firefox/19.0'
@@ -45,19 +47,21 @@ class Httpy:
 
     def download(self, url, save_as, timeout=DEFAULT_TIMEOUT, raise_exception=False):
         """ Downloads file from URL to save_as path. """
-        result = False
+        retries = 3
 
-        with open(save_as, 'wb') as outfile:
+        while retries > 0:
             try:
-                r = self.session.get(url, timeout=timeout)
-                for chunk in r.iter_content(65536):
-                    outfile.write(chunk)
-                result = True
+                with open(save_as, 'wb') as outfile:
+                    r = self.session.get(url, timeout=timeout)
+                    for chunk in r.iter_content(65536):
+                        outfile.write(chunk)
+                    return True
             except Exception as e:
-                if raise_exception:
-                    raise e
-
-        return result
+                retries -= 1
+                sleep(0.1)
+        if raise_exception:
+            raise e
+        return False
 
     def get_meta(self, url, raise_exception=False, timeout=DEFAULT_TIMEOUT):
         """

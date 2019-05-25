@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{NSFW} Reddit reverse image search</title>
+    <meta name="description"
+          content="Search NSFW subreddits by image. Easily find the source for some photos (and more) by finding the relevant posts on reddit.">
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+    <link rel="stylesheet" href="../static/materialize.css">
+    <link rel="stylesheet" type="text/css" href="../static/main.css"/>
+</head>
+<body>
+
+{#Header#}
+<a class="header nsfw" href="/">
+    <h2>
+        <span style="white-space: nowrap;">
+            <span class="nsfw_bracket" id="nsfw_bracket_left">{</span>
+            <span class="nsfw_red">NSFW</span>
+            <span class="nsfw_bracket" id="nsfw_bracket_right">}</span>
+        </span>
+        <span class="nsfw_white">reddit&nbsp;reverse image&nbsp;search</span>
+    </h2>
+</a>
+
+<main class="container">
+
+    {# Search bar #}
+    <div class="card-panel">
+        <form onsubmit="return query()">
+            <div class="input-field">
+                <input id="search" type="text" required>
+                <label for="search">Search</label>
+            </div>
+        </form>
+    </div>
+
+    {# Search results #}
+    <div id="output"></div>
+
+    {# menu #}
+    <div class="card">
+        <div class="card-content">
+
+            <ul id="rri_menu" class="tabs">
+                <li class="tab col s3"><a href="#rri_menu_stats">Statistics</a></li>
+                <li class="tab col s3"><a href="#rri_menu_subs">Subreddits</a></li>
+                <li class="tab col s3"><a href="#rri_menu_about">About</a></li>
+            </ul>
+
+            {# Database stats #}
+            <div id="rri_menu_stats" style="padding-top: 2em">
+                <table>
+                    <tbody>
+                    <tr>
+                        <th>images</th>
+                        <td id="db_images">...</td>
+                    </tr>
+                    <tr>
+                        <th>comments</th>
+                        <td id="db_comments">...</td>
+                    </tr>
+                    <tr>
+                        <th>albums</th>
+                        <td id="db_albums">...</td>
+                    </tr>
+                    <tr>
+                        <th>posts</th>
+                        <td id="db_posts">...</td>
+                    </tr>
+                    <tr>
+                        <th>subreddits</th>
+                        <td id="db_subreddits">...</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            {# Subreddits #}
+            <div id="rri_menu_subs">
+                <div id="subreddit_err"></div>
+                <div id="subreddits"></div>
+            </div>
+
+            {# About #}
+            <div id="rri_menu_about" style="padding-top: 2em">
+                <div class="row">
+                    <div class="col s2"><span class="right bold">Who?</span></div>
+                    <div class="col s10">Created by 4_pr0n</div>
+                </div>
+                <div class="row">
+                    <div class="col s2"><span class="right bold">What?</span></div>
+                    <div class="col s10">Shows reddit posts, comments, and albums that contain an image</div>
+                </div>
+                <div class="row">
+                    <div class="col s2"><span class="right bold">When?</span></div>
+                    <div class="col s10">Constantly scrapes images from day-old posts</div>
+                </div>
+                <div class="row">
+                    <div class="col s2"><span class="right bold">Where?</span></div>
+                    <div class="col s10">From the weekly top 1,000 posts in the listed subreddits</div>
+                </div>
+                <div class="row">
+                    <div class="col s2"><span class="right bold">Why?</span></div>
+                    <div class="col s10">The greater good</div>
+                </div>
+                <div class="row">
+                    <div class="col s2"><span class="right bold">How?</span></div>
+                    <div class="col s10">Image comparison & python. see the source code on <a href="https://github.com/simon987/irarchives">Github</a></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer class="page-footer">
+    <div class="container">
+        <div class="row">
+            Suggestions or comments? contact
+            <a class="bookmarklet"
+               href="http://www.reddit.com/message/compose/?to=4_pr0n&subject=about%20i.rarchives.com&message=I%20have%20a%20%3Ccomplaint%2C%20comment%2C%20suggestion%3E%3A"
+            >4_pr0n</a> via reddit
+        </div>
+    </div>
+    <div class="footer-copyright">
+        <div class="container">This site is not affiliated with reddit.com</div>
+    </div>
+</footer>
+
+</body>
+
+<script src="../static/materialize.min.js"></script>
+<script src="../static/index.js"></script>
+
+</html>

@@ -2,9 +2,9 @@ import re
 
 from common import logger
 
-LINK_RE = re.compile(r'\[.*\]\(([^\)]+)\)')
-SUB_RE = re.compile(r"^https?://(.*)/r/(\w+)"
-                    r"($|/|/about/(.*)|/wiki/(.*)|/(top|new|hot|rising|controvertial)/\?.*|/comments/(.*))$")
+LINK_RE = re.compile(r'\[.*\]\(([^)]+)\)')
+SUB_RE = re.compile(r"^(.*)/r/(\w+)"
+                    r"($|/|/about/(.*)|/wiki/(.*)|/(top|new|hot|rising|controvertial|gilded)/\?.*|/comments/(.*))$")
 USER_RE = re.compile("^https?://(.*)/(u|user)/(\\w+)($|/)$")
 
 TRUSTED_AUTHORS = [
@@ -47,7 +47,7 @@ def save_list(lst, filename):
 
 def should_parse_link(url):
 
-    if url.startswith("/r/") or SUB_RE.match(url):
+    if SUB_RE.match(url):
         logger.debug('Skipping url %s: Subreddit' % url)
         return False
 
@@ -99,69 +99,19 @@ def should_download_image(url):
 
 def clean_url(url):
     """ Sanitizes URLs for DB input, strips excess chars """
-    url = url.replace('"', '%22')
-    url = url.replace("'", '%27')
-    if '?' in url:
-        url = url[:url.find('?')]
-    if '#' in url:
-        url = url[:url.find('#')]
-    return url
-
-
-def sanitize_url(url, web):
-    """
-        Retrieves direct link to image based on URL,
-        Strips excess data from imgur albums,
-        Throws Exception if unable to find direct image.
-    """
-    url = url.strip()
-    if '?' in url:
-        url = url[:url.find('?')]
-    if '#' in url:
-        url = url[:url.find('#')]
-    if url == '' or not '.' in url:
-        raise Exception('invalid URL')
-
-    if '://' not in url:
-        url = 'http://%s' % url  # Fix for what'shisface who forgets to prepend http://
+    url = url.replace('"', '%22')\
+        .replace("'", '%27')\
+        .replace("'", '%27')\
+        .replace('http://', '')\
+        .replace('https://', '')
 
     while url.endswith('/'):
         url = url[:-1]
-    if 'imgur.com' in url:
-        if '.com/a/' in url:
-            # Album
-            url = url.replace('http://', '').replace('https://', '')
-            while url.endswith('/'):
-                url = url[:-1]
-            while url.count('/') > 2:
-                url = url[:url.rfind('/')]
-            if '?' in url:
-                url = url[:url.find('?')]
-            if '#' in url:
-                url = url[:url.find('#')]
-            url = 'http://%s' % url  # How the URL will be stored in the DB
-            return url
-
-        elif url.lower().endswith('.jpeg') or \
-                url.lower().endswith('.jpg') or \
-                url.lower().endswith('.png') or \
-                url.lower().endswith('.gif'):
-            # Direct imgur link, find highest res
-            url = imgur_get_highest_res(url, web)
-        # Drop out of if statement & parse image
-        else:
-            # Indirect imgur link (e.g. "imgur.com/abcde")
-            r = web.get(url)
-            if '"image_src" href="' in r:
-                url = web.between(r, '"image_src" href="', '"')[0]
-            else:
-                raise Exception("unable to find imgur image (404?)")
-    elif 'gfycat.com' in url and 'thumbs.gfycat.com' not in url:
-        r = web.get(url)
-        if "og:image' content='" in r:
-            url = web.between(r, "og:image' content='", "'")[-1]
-        else:
-            raise Exception("unable to find gfycat poster image")
+    if '?' in url:
+        url = url[:url.find('?')]
+    if '#' in url:
+        url = url[:url.find('#')]
+    url = 'http://' + url
     return url
 
 

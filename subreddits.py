@@ -9,4 +9,5 @@ subreddits_page = Blueprint('subreddits', __name__, template_folder='templates')
 
 @subreddits_page.route("/subreddits")
 def get_subs():
-    return Response(json.dumps({'subreddits': load_list('subs.txt')}), mimetype="application/json")
+    return Response(json.dumps({'subreddits': load_list('subs.txt')}),
+                    mimetype="application/json")
