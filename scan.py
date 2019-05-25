@@ -174,8 +174,6 @@ def parse_subreddit(subreddit, timeframe):
     current_post_index = 0
 
     while True:
-        # Check if there are pending albums to be indexed
-        check_and_drain_queue()
         query_text = '/r/%s/top?t=%s' % (subreddit, timeframe)
         if total_post_count == 0:
             logger.info('Loading first page of %s' % query_text)
@@ -404,36 +402,6 @@ def get_hashid_and_urlid(url):
         raise e
     remove(temp_image)
     return hashid, urlid, True
-
-
-def save_subs(filename):
-    """ Copies list of subreddits to filename """
-    sub_list = load_list('subs.txt')
-    save_list(sub_list, filename)
-    return sub_list
-
-
-def check_and_drain_queue():
-    """
-        Indexes & empties file containing list of URLs to index
-        File is populated via front-end requests.
-    """
-    if not path.exists('index_queue.lst'):
-        return
-
-    # Read URLs
-    items = set(load_list('index_queue.lst'))
-
-    # Delete
-    with open('index_queue.lst', 'w') as f:
-        f.write('')
-
-    if not items:
-        return
-
-    logger.info('found %d images to index' % len(items))
-    for url in items:
-        parse_url(url)
 
 
 if __name__ == '__main__':
