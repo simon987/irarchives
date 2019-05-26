@@ -57,6 +57,8 @@ class Httpy:
                         for chunk in r.iter_content(65536):
                             outfile.write(chunk)
                         return True
+                    else:
+                        retries -= 1
             except Exception as e:
                 retries -= 1
                 sleep(5)
