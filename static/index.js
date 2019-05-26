@@ -137,13 +137,14 @@ function handleSearchResponse(responseText) {
         return;
     }
 
+    if (resp['images']) {
+        results_el.appendChild(mkGallery(resp['images']));
+        return
+    }
+
     if (!resp.posts.length && !resp.comments.length && !resp.related.length) {
         results_el.appendChild(mkHeader(`No results`));
         return;
-    }
-
-    if (resp['images']) {
-        results_el.appendChild(mkGallery(resp['images']));
     }
 
     // POSTS

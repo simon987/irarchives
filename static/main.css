@@ -168,7 +168,7 @@ footer a {
         display: none;
     }
     .card.horizontal .card-action {
-        display: inherit;
+        display: block;
     }
 }
 
