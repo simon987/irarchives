@@ -298,7 +298,7 @@ def parse_url(url, postid=0, commentid=0):
 
     if len(image_urls) > 10:
         logger.debug("Using multithreading to download large album")
-        pool = ThreadPool(processes=8)
+        pool = ThreadPool(processes=3)
         pool.starmap(func=parse_image,
                      iterable=zip(image_urls, repeat(postid), repeat(commentid), repeat(albumid)))
         pool.close()

@@ -1,5 +1,4 @@
 import sqlite3
-from time import sleep
 
 from common import logger
 

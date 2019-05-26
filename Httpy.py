@@ -53,12 +53,13 @@ class Httpy:
             try:
                 with open(save_as, 'wb') as outfile:
                     r = self.session.get(url, timeout=timeout)
-                    for chunk in r.iter_content(65536):
-                        outfile.write(chunk)
-                    return True
+                    if r.status_code == 200:
+                        for chunk in r.iter_content(65536):
+                            outfile.write(chunk)
+                        return True
             except Exception as e:
                 retries -= 1
-                sleep(0.1)
+                sleep(5)
         if raise_exception:
             raise e
         return False
@@ -76,23 +77,8 @@ class Httpy:
                 raise e
         return {}
 
-    def unshorten(self, url, timeout=DEFAULT_TIMEOUT):
-        """
-            Attempts to resolve redirected URL.
-            Returns new resolved URL if found,
-            otherwise returns original URL.
-        """
-        try:
-            r = self.session.get(url, headers=self.get_headers(), timeout=timeout)
-            return r.url
-        except Exception:
-            return url
-
     def clear_cookies(self):
         self.session = requests.Session()
-
-    def set_user_agent(self, user_agent):
-        self.user_agent = user_agent
 
     def get_headers(self):
         """ Returns default headers for URL requests """
