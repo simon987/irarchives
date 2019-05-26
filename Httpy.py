@@ -3,7 +3,7 @@ from time import sleep
 import requests
 
 DEFAULT_USERAGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:19.0) Gecko/20100101 Firefox/19.0'
-DEFAULT_TIMEOUT = 15
+DEFAULT_TIMEOUT = 30
 
 
 class Httpy:
