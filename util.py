@@ -4,7 +4,8 @@ from common import logger
 
 LINK_RE = re.compile(r'\[.*\]\(([^)]+)\)')
 SUB_RE = re.compile(r"^(.*)/r/(\w+)"
-                    r"($|/|/about/(.*)|/wiki/(.*)|/(top|new|hot|rising|controvertial|gilded)/\?.*|/comments/(.*))$")
+                    r"($|/|/about/(.*)|/wiki/(.*)|/(top|new|hot|rising|controvertial|gilded)/\?.*|/comments/(.*))"
+                    r"($|\?.*$)")
 USER_RE = re.compile("^https?://(.*)/(u|user)/(\\w+)($|/)$")
 
 TRUSTED_AUTHORS = [
@@ -112,18 +113,6 @@ def clean_url(url):
     if '#' in url:
         url = url[:url.find('#')]
     url = 'http://' + url
-    return url
-
-
-def imgur_get_highest_res(url, web):
-    """ Retrieves highest-res imgur image """
-    if 'h.' not in url:
-        return url
-    temp = url.replace('h.', '.')
-    m = web.get_meta(temp)
-    if 'Content-Type' in m and 'image' in m['Content-Type'].lower() and \
-            'Content-Length' in m and m['Content-Length'] != '503':
-        return temp
     return url
 
 
