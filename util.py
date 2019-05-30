@@ -39,13 +39,6 @@ def load_list(filename):
         return [x.strip().lower() for x in f.readlines() if x != "\n"]
 
 
-def save_list(lst, filename):
-    """ Saves list to filename """
-    with open(filename, 'w') as f:
-        for item in lst:
-            f.write(item + '\n')
-
-
 def should_parse_link(url):
 
     if SUB_RE.match(url):

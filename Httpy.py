@@ -1,5 +1,3 @@
-from time import sleep
-
 import requests
 
 from common import HTTP_PROXY

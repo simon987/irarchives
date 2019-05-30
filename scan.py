@@ -23,7 +23,7 @@ from Httpy import Httpy
 from ImageHash import avhash, dimensions, create_thumb
 from common import logger
 from img_util import get_image_urls
-from util import load_list, save_list, get_links_from_body, should_download_image, is_direct_link, clean_url, \
+from util import load_list, get_links_from_body, should_download_image, is_direct_link, clean_url, \
     should_parse_link
 
 reddit = ReddiWrap.ReddiWrap()
@@ -105,27 +105,11 @@ def main():
     """
     exit_if_already_started()
     while True:
-        # Subreddits are added to "subs_all.txt", "subs_month.txt", and
-        # "subs_week.txt", and "subs.txt" (master list).
-        # These lists tell the script which top?t=timeperiod to grab
-        # After grabbing the top from all/month, the script continues to
-        # check the subreddit's top weekly posts
         for timeframe in ['all', 'month', 'week']:
-            if timeframe == 'week':
-                # Load subreddits to check the top?t=week of, or load
-                # all subs from the masterlist if found to be empty.
-                subreddits = load_list('subs_%s.txt' % timeframe)
-                if not subreddits:
-                    subreddits = load_list('subs.txt')
-            else:
-                # Only load subs from all/month, don't load more if the
-                # lists are found to be empty
-                subreddits = load_list('subs_%s.txt' % timeframe)
+            subreddits = load_list('subs.txt')
             while subreddits:
                 # Grab all images/comments from sub, remove from list
                 parse_subreddit(subreddits.pop(0), timeframe)
-                # Save current list in case script needs to be restarted
-                save_list(subreddits, 'subs_%s.txt' % timeframe)
 
 
 def exit_if_already_started():
