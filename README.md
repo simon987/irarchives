@@ -13,6 +13,9 @@ The repo contains:
 * a script to scrape images from reddit posts and store the data in a database.
 * a web interface for searching the database
 
+### Database schema
+![schema](schema.png)
+
 Requirements
 ------------
 Tested with Python 3.7.2.
