@@ -104,9 +104,6 @@ def main():
         Infinitely iterates over the list of subreddits
     """
     exit_if_already_started()
-    # Login to reddit acct or die
-    if not reddit_login():
-        return
     while True:
         # Subreddits are added to "subs_all.txt", "subs_month.txt", and
         # "subs_week.txt", and "subs.txt" (master list).
@@ -129,7 +126,6 @@ def main():
                 parse_subreddit(subreddits.pop(0), timeframe)
                 # Save current list in case script needs to be restarted
                 save_list(subreddits, 'subs_%s.txt' % timeframe)
-                time.sleep(2)
 
 
 def exit_if_already_started():
@@ -141,30 +137,6 @@ def exit_if_already_started():
     if running_processes > 1:
         logger.error("process is already running, exiting")
         sys.exit(0)
-
-
-def reddit_login():
-    """ Logs into reddit. Returns false if it can't """
-    if path.exists('login_credentials.txt'):
-        with open('login_credentials.txt') as login_file:
-            login_list = login_file.read().split('\n')
-
-        if len(login_list) >= 2:
-            user = login_list[0]
-            password = login_list[1]
-            logger.info('logging in to %s...' % user)
-            result = reddit.login(user=user, password=password)
-            if result == 0:
-                logger.info('Reddit login OK')
-                return True
-            else:
-                logger.error('failed (status code %d)' % result)
-                return False
-
-    logger.error('unable to find/validate user/pass\n'
-                 'credentials need to be in login_credentials.txt\n'
-                 'expecting: username and password separated by new lines')
-    return False
 
 
 def parse_subreddit(subreddit, timeframe):
@@ -197,10 +169,7 @@ def parse_subreddit(subreddit, timeframe):
             logger.info('[%3d/%3d] Scraping http://redd.it/%s %s' %
                         (current_post_index, total_post_count, post.id, post.url[:50]))
 
-            if parse_post(post):  # Returns True if we made a request to reddit
-                time.sleep(2)  # Sleep to stay within rate limit
-
-        time.sleep(2)
+            parse_post(post)
 
 
 def parse_post(post):

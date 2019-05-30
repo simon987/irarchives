@@ -1,6 +1,7 @@
+import subprocess
 from subprocess import CalledProcessError, check_output, TimeoutExpired
 
-from common import logger
+from common import logger, HTTP_PROXY
 
 
 def get_image_urls(url):
@@ -9,7 +10,12 @@ def get_image_urls(url):
     logger.debug('Getting urls from %s ...' % (url,))
 
     try:
-        cmd_res = check_output(['gallery-dl', '-g', '-q', url], timeout=60 * 15).decode()
+        cmd_res = check_output([
+            'gallery-dl', '-g', '-q',
+            '--proxy', HTTP_PROXY, '--no-check-certificate',
+            '-R' '1', '--http-timeout', '600', url
+        ], timeout=60 * 15, stderr=subprocess.DEVNULL).decode()
+
         for image_url in cmd_res.split('\n'):
             if image_url.strip() != "":
                 result.add(image_url)

@@ -12,3 +12,5 @@ for h in logger.handlers:
     logger.removeHandler(h)
 logger.addHandler(file_handler)
 logger.addHandler(StreamHandler(sys.stdout))
+
+HTTP_PROXY="http://localhost:5050"

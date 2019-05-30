@@ -2,8 +2,12 @@ from time import sleep
 
 import requests
 
+from common import HTTP_PROXY
+
+requests.packages.urllib3.disable_warnings()
+
 DEFAULT_USERAGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:19.0) Gecko/20100101 Firefox/19.0'
-DEFAULT_TIMEOUT = 30
+DEFAULT_TIMEOUT = 600
 
 
 class Httpy:
@@ -19,6 +23,13 @@ class Httpy:
         self.session = requests.Session()
         self.user_agent = user_agent
         self.session.headers = self.get_headers()
+
+        self.session.verify = False
+        self.session.proxies = {
+            "https": HTTP_PROXY,
+            "http": HTTP_PROXY
+        }
+
         self.timeout = timeout
 
     def get(self, url, timeout=DEFAULT_TIMEOUT, raise_exception=False):
@@ -47,23 +58,17 @@ class Httpy:
 
     def download(self, url, save_as, timeout=DEFAULT_TIMEOUT, raise_exception=False):
         """ Downloads file from URL to save_as path. """
-        retries = 3
 
-        while retries > 0:
-            try:
-                with open(save_as, 'wb') as outfile:
-                    r = self.session.get(url, timeout=timeout)
-                    if r.status_code == 200:
-                        for chunk in r.iter_content(65536):
-                            outfile.write(chunk)
-                        return True
-                    else:
-                        retries -= 1
-            except Exception as e:
-                retries -= 1
-                sleep(5)
-        if raise_exception:
-            raise e
+        try:
+            with open(save_as, 'wb') as outfile:
+                r = self.session.get(url, timeout=timeout)
+                if r.status_code == 200:
+                    for chunk in r.iter_content(65536):
+                        outfile.write(chunk)
+                    return True
+        except Exception as e:
+            if raise_exception:
+                raise e
         return False
 
     def get_meta(self, url, raise_exception=False, timeout=DEFAULT_TIMEOUT):
@@ -80,7 +85,7 @@ class Httpy:
         return {}
 
     def clear_cookies(self):
-        self.session = requests.Session()
+        self.session.cookies.clear()
 
     def get_headers(self):
         """ Returns default headers for URL requests """

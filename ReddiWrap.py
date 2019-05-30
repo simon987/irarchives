@@ -302,58 +302,6 @@ class ReddiWrap:
         self.after = None  # ID pointing to 'next' page
         self.logged_in = False  # Flag to detect if we are logged in or not
 
-        # Sets instance fields, logs in user if needed.
-        self.login(user, password)
-
-    ####################
-    # LOGGING IN & OUT #
-    ####################
-
-    def login(self, user='', password=''):
-        """
-            Clears cookies/modhash, then logs into reddit if applicable.
-            Logs out user if user or password is '' or None
-
-            Returns 0 if login (or logout) is successful,
-            Returns 1 if user/pass is invalid,
-            Returns 2 if login rate limit is reached,
-            Returns -1 if some unknown error is encountered
-        """
-
-        self.web.clear_cookies()  # Removes any traces of previous activity
-        self.modhash = ''
-        self.logged_in = False
-
-        if user == '' or user is None or \
-                password == '' or password is None:
-            # "Log out"
-            self.user = ''
-            self.password = ''
-            return 0
-
-        self.user = user
-        self.password = password
-
-        data = {'user': self.user, 'passwd': self.password, 'api_type': 'json'}
-
-        r = self.web.post('http://www.reddit.com/api/login/%s' % self.user, data)
-        if "WRONG_PASSWORD" in r:
-            # Invalid password
-            return 1
-        elif 'RATELIMIT' in r:
-            # Rate limit reached.
-            return 2
-        else:  # if 'redirect' in r:
-            js = json.loads(r)
-            if js.get('json') is None or js['json'].get('data') is None:
-                return -1
-            # Correct password.
-            self.logged_in = True
-            self.modhash = js['json']['data']['modhash']
-            return 0
-        # Unexpected response.
-        return -1
-
     ################
     # WEB REQUESTS #
     ################
