@@ -36,7 +36,7 @@ class DB:
 
     def create_table(self, table_name, schema):
         """Creates new table with schema"""
-        with sqlite3.connect(self.db_file) as conn:
+        with sqlite3.connect(self.db_file, timeout=10000) as conn:
             cur = conn.cursor()
             try:
                 cur.execute('''CREATE TABLE IF NOT EXISTS %s (%s)''' % (table_name, schema))
@@ -54,7 +54,7 @@ class DB:
 
         Returns row id of tuple inserted, or -1 if error occurred.
         """
-        with sqlite3.connect(self.db_file) as conn:
+        with sqlite3.connect(self.db_file, timeout=10000) as conn:
             cur = conn.cursor()
             try:
                 questions = ''
@@ -78,7 +78,7 @@ class DB:
 
         Returns # of tuples found in query.
         """
-        with sqlite3.connect(self.db_file) as conn:
+        with sqlite3.connect(self.db_file, timeout=10000) as conn:
             cur = conn.cursor()
             result = cur.execute('''select count(*) from %s where %s''' % (table, where,)).fetchall()
             return result[0][0]
@@ -96,7 +96,7 @@ class DB:
                 print result[1] # prints second attribute
                 ...
         """
-        with sqlite3.connect(self.db_file) as conn:
+        with sqlite3.connect(self.db_file, timeout=10000) as conn:
             cur = conn.cursor()
             query_string = '''SELECT %s FROM %s''' % (what, table)
             if where != '':
@@ -111,7 +111,7 @@ class DB:
         """
         Executes a statement. Similar to the 'select' method, but does not return anything.
         """
-        with sqlite3.connect(self.db_file) as conn:
+        with sqlite3.connect(self.db_file, timeout=10000) as conn:
             cur = conn.cursor()
             result = cur.execute(statement)
             conn.commit()

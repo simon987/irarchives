@@ -21,7 +21,7 @@ class DB:
         self.db_file = db_file
 
     def conn(self):
-        conn = sqlite3.connect(self.db_file)
+        conn = sqlite3.connect(self.db_file, timeout=10000)
         return conn
 
     def count(self, table, where):
