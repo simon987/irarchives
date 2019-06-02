@@ -244,14 +244,11 @@ def parse_url(url, postid=0, commentid=0):
     # We assume that any url that yields more than 1 image is an album
     albumid = 0
     if len(image_urls) > 1:
-        albumid = db.insert('Albums', (None, url))
-        if albumid == -1:
-            albumids = db.select('id', 'Albums', 'url LIKE "%s"' % url)
-            albumid = albumids[0][0]
+        albumid = get_or_create_album(url)
 
     if len(image_urls) > 10:
         logger.debug("Using multithreading to download large album")
-        pool = ThreadPool(processes=3)
+        pool = ThreadPool(processes=10)
         pool.starmap(func=parse_image,
                      iterable=zip(image_urls, repeat(postid), repeat(commentid), repeat(albumid)))
         pool.close()
@@ -259,6 +256,14 @@ def parse_url(url, postid=0, commentid=0):
         for image_url in image_urls:
             parse_image(image_url, postid, commentid, albumid)
     return True
+
+
+def get_or_create_album(url):
+    albumid = db.insert('Albums', (None, url))
+    if albumid == -1:
+        albumids = db.select('id', 'Albums', 'url LIKE "%s"' % url)
+        albumid = albumids[0][0]
+    return albumid
 
 
 def parse_image(url, postid=0, commentid=0, albumid=0):
@@ -320,10 +325,7 @@ def get_hashid_and_urlid(url):
     except Exception as e:
         # Failed to get hash, delete image & raise exception
         logger.debug('Failed')
-        try:
-            remove(temp_image)
-        except:
-            pass
+        try_remove(temp_image)
         raise e
     logger.debug('Indexing ... ')
 
@@ -333,10 +335,7 @@ def get_hashid_and_urlid(url):
         # Already exists, need to lookup existing hash
         hashids = db.select('id', 'Hashes', 'hash = "%s"' % (image_hash,))
         if not hashids:
-            try:
-                remove(temp_image)
-            except:
-                pass
+            try_remove(temp_image)
             raise Exception('unable to add hash to table, or find hash (wtf?)')
         hashid = hashids[0][0]
 
@@ -345,16 +344,21 @@ def get_hashid_and_urlid(url):
         filesize = path.getsize(temp_image)
         url = clean_url(url)
         urlid = db.insert('ImageURLs', (None, url, hashid, width, height, filesize))
-        create_thumb(temp_image, urlid)  # Make a thumbnail!
+        create_thumb(temp_image, urlid)
         logger.debug('Done')
     except Exception as e:
-        try:
-            remove(temp_image)
-        except:
-            pass
+        try_remove(temp_image)
         raise e
     remove(temp_image)
     return hashid, urlid, True
+
+
+def try_remove(filename):
+    try:
+        remove(filename)
+    except Exception as e:
+        logger.warn("Could not delete %s: %s" % (filename, str(e)))
+        pass
 
 
 if __name__ == '__main__':

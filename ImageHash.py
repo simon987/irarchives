@@ -1,8 +1,10 @@
 #!/usr/bin/python
-
+import os
 from os import mkdir, sep
 
 from PIL import Image
+
+from common import logger
 
 
 def avhash(im):
@@ -94,9 +96,13 @@ def create_thumb(im, num):
         Creates a thumbnail for a given image file.
         Saves to 'thumbs' directory, named <num>.jpg
     """
+
+    dirpath = thumb_path(num)
+
     try:
-        mkdir('static/thumbs')
-    except OSError:
+        os.makedirs(dirpath, exist_ok=True)
+    except OSError as e:
+        logger.warn("Could not create dir: %s" % (e, ))
         pass
 
     if not isinstance(im, Image.Image):
@@ -106,6 +112,11 @@ def create_thumb(im, num):
         im = im.convert("RGB")
     im.thumbnail((500, 500), Image.ANTIALIAS)
 
-    # TODO: Directory structure
-    im.save('static/thumbs%s%d.jpg' % (sep, num), 'JPEG')
+    im.save(os.path.join(dirpath, str(num) + ".jpg"), 'JPEG')
     del im
+
+
+def thumb_path(thumb_id):
+    digit1 = str(thumb_id)[0]
+    digit2 = str(thumb_id)[1] if thumb_id >= 10 else "0"
+    return os.path.join('static/thumbs/', digit1, digit2)

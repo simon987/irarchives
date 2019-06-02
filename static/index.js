@@ -24,10 +24,58 @@ function mmd(s) {
     return p
 }
 
+function getImageBlob(event) {
+    const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+    for (let i in items) {
+        const item = items[i];
+        if (item.kind === 'file') {
+            return item.getAsFile();
+        }
+    }
+}
+
+function uploadBlob(blob) {
+    const reader = new FileReader();
+    reader.onload = function (event) {
+        const form = new FormData();
+        form.append('fname', 'image');
+        form.append('data', event.target.result);
+
+        const request = new XMLHttpRequest();
+        request.open("POST", 'upload', true);
+        request.send(form);
+        request.onreadystatechange = function () {
+            if (request.readyState === 4) {
+                if (request.status === 200) {
+                    const json = JSON.parse(request.responseText);
+                    gebi("search").value = json.url;
+                    clearResults();
+                    const results_el = gebi('output');
+                    const pl = mkPreloader();
+                    results_el.appendChild(pl);
+                    handleSearchResponse(request.responseText);
+                    pl.remove();
+                } else {
+                    console.log(request.responseText)
+                }
+            }
+        };
+    };
+    reader.readAsDataURL(blob);
+}
+
+
 window.onload = function () {
     M.Tabs.init(document.getElementById("rri_menu"), {});
     get_subreddits();
     get_status();
+    gebi("search").addEventListener("paste", function (e) {
+        console.log(e);
+        const blob = getImageBlob(e);
+        if (blob) {
+            uploadBlob(blob)
+        }
+    }, false);
 };
 
 

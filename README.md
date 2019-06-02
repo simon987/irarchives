@@ -22,6 +22,9 @@ Tested with Python 3.7.2.
 
 The image calculations require Python Imaging Library, or [PIL](http://www.pythonware.com/products/pil/).
 
+This project relies on [Architeuthis](https://github.com/simon987/Architeuthis) MITM proxy to respect rate-limits
+and handle http errors. 
+
 Notes
 -----
 There is no database included with the repo for obvious reasons. 

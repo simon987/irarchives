@@ -1,13 +1,14 @@
 import json
-import tempfile
 import re
-from os import path, close, remove
+import tempfile
+from os import path, close
 
 from flask import Blueprint, Response, request
 
 from DB import DB
 from Httpy import Httpy
-from ImageHash import avhash
+from ImageHash import avhash, thumb_path
+from scan import try_remove
 from util import clean_url, sort_by_ranking, is_user_valid
 
 search_page = Blueprint('search', __name__, template_folder='templates')
@@ -121,7 +122,7 @@ def search_user(user):
                 break
 
     return Response(json.dumps({
-        'url': 'user:%s' % user,  # 'http://reddit.com/user/%s' % user,
+        'url': 'user:%s' % user,
         'posts': posts,
         'comments': comments,
         'related': related
@@ -144,7 +145,7 @@ def search_cache(url):
     image_tuples = db.select('id, url', 'ImageURLs', query_text)
     for (urlid, imageurl) in image_tuples:
         image = {
-            'thumb': 'static/thumbs/%d.jpg' % urlid,
+            'thumb': path.join(thumb_path(urlid), '%d.jpg' % urlid),
             'url': imageurl
         }
         images.append(image)
@@ -277,16 +278,10 @@ def get_hashid(url, timeout=10):
     # Get image hash
     try:
         image_hash = str(avhash(temp_image))
-        try:
-            remove(temp_image)
-        except:
-            pass
+        try_remove(temp_image)
     except Exception as e:
         # Failed to get hash, delete image & raise exception
-        try:
-            remove(temp_image)
-        except:
-            pass
+        try_remove(temp_image)
         raise Exception("Could not identify image")
 
     hashids = db.select('id', 'Hashes', 'hash = "%s"' % image_hash)
@@ -299,10 +294,9 @@ def get_hashid(url, timeout=10):
 # "Builder" methods
 def build_post(postid, urlid, albumid):
     """ Builds dict containing attributes about a post """
-    item = {'thumb': 'static/thumbs/%d.jpg' % urlid}  # Dict to return
-    # Thumbnail
-    # if not path.exists(item['thumb']):
-    #     item['thumb'] = ''
+    item = {
+        'thumb': path.join(thumb_path(urlid), '%d.jpg' % urlid),
+    }
 
     # Get info about post
     (postid,
@@ -334,7 +328,9 @@ def build_post(postid, urlid, albumid):
 
 def build_comment(commentid, urlid, albumid):
     """ Builds dict containing attributes about a comment """
-    item = {'thumb': 'static/thumbs/%d.jpg' % urlid}  # Dict to return
+    item = {
+        'thumb': path.join(thumb_path(urlid), '%d.jpg' % urlid),
+    }
 
     # Thumbnail
     if not path.exists(item['thumb']):
