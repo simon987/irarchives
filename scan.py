@@ -296,7 +296,7 @@ def get_hashid_and_urlid(url):
         Populates 'Hashes' and 'ImageURLs' if needed.
         3rd tuple is True if downloading of image was required
     """
-    existing = db.select('id, hashid', 'ImageURLs', 'url LIKE "%s"' % url)
+    existing = db.select('id, hashid', 'ImageURLs', 'url LIKE "%s"' % clean_url(url))
     if existing:
         urlid = existing[0][0]
         hashid = existing[0][1]
