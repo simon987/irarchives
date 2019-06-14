@@ -8,19 +8,17 @@ What this script does:
     4. If post/comment contains image/link, stores post/comment info in database
 """
 
-import tempfile
+import sys
 import time
 from itertools import repeat
 from multiprocessing.pool import ThreadPool
-from os import path, close, remove
+from os import remove
 from subprocess import getstatusoutput
-
-import sys
 
 import ReddiWrap
 from DB import DB
 from Httpy import Httpy
-from ImageHash import avhash, dimensions, create_thumb
+from ImageHash import avhash, create_thumb, image_from_buffer
 from common import logger
 from img_util import get_image_urls
 from util import load_list, get_links_from_body, should_download_image, is_direct_link, clean_url, \
@@ -303,29 +301,23 @@ def get_hashid_and_urlid(url):
         return hashid, urlid, False
 
     # Download image
-    (file, temp_image) = tempfile.mkstemp(prefix='redditimg', suffix='.jpg')
-    close(file)
     if url.startswith('//'):
         url = 'http:%s' % url
     logger.debug('Downloading %s ...' % url)
-    if not web.download(url, temp_image):
+    try:
+        image_buffer = web.download(url)
+    except Exception as e:
         logger.debug('Failed')
-        raise Exception('Unable to download image at %s' % url)
+        raise Exception('Unable to download image at %s: %s' % (url, e))
+
     # Get image hash
     try:
         logger.debug('Hashing ...')
-        (width, height) = dimensions(temp_image)
-        if width > 10000 or height > 10000:
-            logger.error('Image too large to hash (%dx%d)' % (width, height))
-            raise Exception('too large to hash (%dx%d)' % (width, height))
-        if (width == 130 and height == 60) or (width == 131 and height == 81):
-            # Size of empty imgur image ('not found!')
-            raise Exception('Found 404 image dimensions (130x60)')
-        image_hash = str(avhash(temp_image))
+        image = image_from_buffer(image_buffer)
+        (width, height) = image.size
+        image_hash = str(avhash(image))
     except Exception as e:
-        # Failed to get hash, delete image & raise exception
         logger.debug('Failed')
-        try_remove(temp_image)
         raise e
     logger.debug('Indexing ... ')
 
@@ -335,21 +327,18 @@ def get_hashid_and_urlid(url):
         # Already exists, need to lookup existing hash
         hashids = db.select('id', 'Hashes', 'hash = "%s"' % (image_hash,))
         if not hashids:
-            try_remove(temp_image)
             raise Exception('unable to add hash to table, or find hash (wtf?)')
         hashid = hashids[0][0]
 
     # Image attributes
     try:
-        filesize = path.getsize(temp_image)
+        filesize = len(image_buffer)
         url = clean_url(url)
         urlid = db.insert('ImageURLs', (None, url, hashid, width, height, filesize))
-        create_thumb(temp_image, urlid)
+        create_thumb(image, urlid)
         logger.debug('Done')
     except Exception as e:
-        try_remove(temp_image)
         raise e
-    remove(temp_image)
     return hashid, urlid, True
 
 

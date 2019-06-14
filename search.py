@@ -1,20 +1,17 @@
 import json
 import re
-import tempfile
-from os import path, close
+from os import path
 
 from flask import Blueprint, Response, request
 
 from DB import DB
 from Httpy import Httpy
-from ImageHash import avhash, thumb_path
-from scan import try_remove
+from ImageHash import avhash, thumb_path, image_from_buffer
 from util import clean_url, sort_by_ranking, is_user_valid
 
 search_page = Blueprint('search', __name__, template_folder='templates')
 
 AlphaNum = re.compile(r'[\W_]+')
-
 
 db = DB('reddit.db')
 web = Httpy()
@@ -270,18 +267,16 @@ def get_hashid(url, timeout=10):
         return existing[0][0], False
 
     # Download image
-    (tmpfile, temp_image) = tempfile.mkstemp(prefix='redditimg', suffix='.jpg')
-    close(tmpfile)
-    if not web.download(url, temp_image, timeout=timeout):
+    image_buffer = web.download(url, timeout=timeout)
+    if not image_buffer:
         raise Exception('unable to download image at %s' % url)
 
     # Get image hash
     try:
-        image_hash = str(avhash(temp_image))
-        try_remove(temp_image)
-    except Exception as e:
+        image = image_from_buffer(image_buffer)
+        image_hash = str(avhash(image))
+    except:
         # Failed to get hash, delete image & raise exception
-        try_remove(temp_image)
         raise Exception("Could not identify image")
 
     hashids = db.select('id', 'Hashes', 'hash = "%s"' % image_hash)

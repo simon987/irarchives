@@ -54,20 +54,12 @@ class Httpy:
                 raise e
         return result
 
-    def download(self, url, save_as, timeout=DEFAULT_TIMEOUT, raise_exception=False):
+    def download(self, url, timeout=DEFAULT_TIMEOUT):
         """ Downloads file from URL to save_as path. """
-
-        try:
-            with open(save_as, 'wb') as outfile:
-                r = self.session.get(url, timeout=timeout)
-                if r.status_code == 200:
-                    for chunk in r.iter_content(65536):
-                        outfile.write(chunk)
-                    return True
-        except Exception as e:
-            if raise_exception:
-                raise e
-        return False
+        r = self.session.get(url, timeout=timeout)
+        if r.status_code == 200:
+            return r.content
+        raise Exception("HTTP" + str(r.status_code))
 
     def get_meta(self, url, raise_exception=False, timeout=DEFAULT_TIMEOUT):
         """
