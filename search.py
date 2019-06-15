@@ -22,26 +22,27 @@ def search():
     """ Searches for a single URL, prints results """
 
     if "q" in request.args:
-        query = request.args["q"].lower()
+        query = request.args["q"]
+        lquery = query.lower()
     else:
         return Response(json.dumps(""))
 
     # Cache
-    if query.startswith('cache:'):
+    if lquery.startswith('cache:'):
         return search_cache(query[len('cache:'):])
 
     # User
-    elif query.startswith('user:'):
+    elif lquery.startswith('user:'):
         return search_user(query[len('user:'):])
 
-    elif 'reddit.com/u/' in query:
-        return search_user(query[query.find('/u/') + 3:])
+    elif 'reddit.com/u/' in lquery:
+        return search_user(query[lquery.find('/u/') + 3:])
 
-    elif 'reddit.com/user/' in query:
-        return search_user(query[query.find('/user/') + 6:])
+    elif 'reddit.com/user/' in lquery:
+        return search_user(query[lquery.find('/user/') + 6:])
 
     # Text
-    elif query.startswith('text:'):
+    elif lquery.startswith('text:'):
         return search_text(query[len('text:'):])
 
     # Post

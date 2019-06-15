@@ -58,13 +58,10 @@ class DB:
             # Great for debugging; print every sql query
             # print query_string
 
-            try_again = True
-            while try_again:
-                try:
-                    cur.execute(query_string)
-                    try_again = False
-                except Exception:
-                    sleep(0.1)
+            try:
+                cur.execute(query_string)
+            except Exception as e:
+                print(e)
 
             results = []
             for result in cur:
@@ -111,6 +108,7 @@ class DB:
                     else:
                         result = cur.execute(statement, values)
                     try_again = False
-                except:
+                except Exception as e:
+                    print(e)
                     sleep(0.1)
             return result
