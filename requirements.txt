@@ -2,3 +2,4 @@ Pillow
 requests
 flask
 gallery-dl
+urllib3

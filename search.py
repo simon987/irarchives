@@ -3,7 +3,7 @@ import re
 from os import path
 
 from flask import Blueprint, Response, request
-
+from common import DBFILE
 from DB import DB
 from Httpy import Httpy
 from ImageHash import avhash, thumb_path, image_from_buffer
@@ -13,7 +13,7 @@ search_page = Blueprint('search', __name__, template_folder='templates')
 
 AlphaNum = re.compile(r'[\W_]+')
 
-db = DB('reddit.db')
+db = DB(DBFILE)
 web = Httpy()
 
 

@@ -13,4 +13,6 @@ for h in logger.handlers:
 logger.addHandler(file_handler)
 logger.addHandler(StreamHandler(sys.stdout))
 
-HTTP_PROXY="http://localhost:5050"
+HTTP_PROXY = "http://localhost:5050"
+
+DBFILE = "reddit.db"

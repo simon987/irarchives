@@ -1,11 +1,11 @@
 import json
 
 from flask import Blueprint, Response
-
+from common import DBFILE
 from ClientDB import DB
 from util import load_list
 
-db = DB('reddit.db')
+db = DB(DBFILE)
 status_page = Blueprint('status', __name__, template_folder='templates')
 
 

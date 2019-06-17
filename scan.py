@@ -19,7 +19,7 @@ import ReddiWrap
 from DB import DB
 from Httpy import Httpy
 from ImageHash import avhash, create_thumb, image_from_buffer
-from common import logger
+from common import logger, DBFILE
 from img_util import get_image_urls
 from util import load_list, get_links_from_body, should_download_image, is_direct_link, clean_url, \
     should_parse_link
@@ -93,7 +93,7 @@ SCHEMA = {
         'PRIMARY KEY(urlid, postid, commentid)'
     # Prevent a post or comment from having more than two of the same exact image
 }
-db = DB('reddit.db', **SCHEMA)
+db = DB(DBFILE, **SCHEMA)
 
 
 def main():

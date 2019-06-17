@@ -1,7 +1,7 @@
 import base64
 import json
 import os
-import tempfile
+from common import DBFILE
 
 from flask import Blueprint, Response, request
 
@@ -12,7 +12,7 @@ from scan import try_remove
 from search import get_results_tuple_for_hash
 
 upload_page = Blueprint('upload', __name__, template_folder='templates')
-db = DB('reddit.db')
+db = DB(DBFILE)
 
 
 @upload_page.route("/upload", methods=["POST"])

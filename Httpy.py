@@ -1,8 +1,8 @@
 import requests
-
+from urllib3 import disable_warnings
 from common import HTTP_PROXY
 
-requests.packages.urllib3.disable_warnings()
+disable_warnings()
 
 DEFAULT_USERAGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:19.0) Gecko/20100101 Firefox/19.0'
 DEFAULT_TIMEOUT = 600
