@@ -1,6 +1,9 @@
 irarchives
 ==========
 
+[![CodeFactor](https://www.codefactor.io/repository/github/simon987/irarchives/badge/master)](https://www.codefactor.io/repository/github/simon987/irarchives/overview/master)
+![GitHub](https://img.shields.io/github/license/simon987/irarchives.svg)
+
 Summary
 -------
 NSFW reverse image search for reddit
