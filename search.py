@@ -3,10 +3,11 @@ import re
 from os import path
 
 from flask import Blueprint, Response, request
-from common import DBFILE
+
 from DB import DB
 from Httpy import Httpy
 from ImageHash import avhash, thumb_path, image_from_buffer
+from common import DBFILE
 from util import clean_url, sort_by_ranking, is_user_valid
 
 search_page = Blueprint('search', __name__, template_folder='templates')
@@ -47,7 +48,7 @@ def search():
 
     # Post
     elif 'reddit.com/r/' in query and '/comments/' in query:
-        # Reddit post
+        # Reddit post, get its url and do a search_url() with it
         if not query.endswith('.json'):
             query += '.json'
         r = web.get(query)
@@ -55,8 +56,13 @@ def search():
             query = web.between(r, '"url": "', '"')[0]
 
     # URL
+    return search_url(query)
+
+
+def search_url(query):
     if ' ' in query:
         query = query.replace(' ', '%20')
+
     try:
         query, posts, comments, related, downloaded = get_results_tuple_for_image(query)
     except Exception as e:
@@ -75,44 +81,19 @@ def search_user(user):
     if user.strip() == '' or not is_user_valid(user):
         raise Exception('invalid username')
 
-    posts = []
-    comments = []
-    related = []
     # This search will pull up all posts and comments by the user
     # NOTE It will also grab all comments containing links in the user's posts (!)
-    query_text = 'postid IN '
-    query_text += '(SELECT DISTINCT id FROM Posts '
-    query_text += 'WHERE author LIKE "%s" ' % user
-    query_text += 'ORDER BY ups DESC LIMIT 50) '
-    query_text += 'OR '
-    query_text += 'commentid IN '
-    query_text += '(SELECT DISTINCT id FROM Comments '
-    query_text += 'WHERE author LIKE "%s" ' % user
-    query_text += 'ORDER BY ups DESC LIMIT 50) '
-    query_text += 'GROUP BY postid, commentid'  # LIMIT 50'
-    # To avoid comments not created by the author, use this query:
-    # query_text = 'commentid = 0 AND postid IN (SELECT DISTINCT id FROM Posts WHERE author LIKE "%s" ORDER BY ups DESC LIMIT 50) OR commentid IN (SELECT DISTINCT id FROM Comments WHERE author LIKE "%s" ORDER BY ups DESC LIMIT 50) GROUP BY postid, commentid LIMIT 50' % (user, user)
-    images = db.select('urlid, albumid, postid, commentid', 'Images', query_text)
-    for (urlid, albumid, postid, commentid) in images:
-        # Get image's URL, dimensions & size
-        if commentid != 0:
-            # Comment
-            try:
-                comment_dict = build_comment(commentid, urlid, albumid)
-                comments.append(comment_dict)
-            except:
-                pass
-        else:
-            # Post
-            try:
-                post_dict = build_post(postid, urlid, albumid)
-                posts.append(post_dict)
-                related += build_related_comments(postid, urlid, albumid)
-            except:
-                pass
-    posts = sort_by_ranking(posts)
-    comments = sort_by_ranking(comments)
+    query_text = 'postid IN (SELECT DISTINCT id FROM Posts WHERE author LIKE "%s" ' \
+                 'ORDER BY ups DESC LIMIT 50) ' \
+                 'OR ' \
+                 'commentid IN (SELECT DISTINCT if FROM Comments WHERE author LIKE "%s" ' \
+                 'ORDER BY upds DESC LIMIT 50) ' \
+                 'GROUP BY postid, commentid' % (user, user)
 
+    images = db.select('urlid, albumid, postid, commentid', 'Images', query_text)
+    comments, posts, related = build_results_for_images(images)
+
+    # TODO: Not sure what that does
     for com in comments:
         for rel in related:
             if rel['hexid'] == com['hexid']:
@@ -138,9 +119,11 @@ def search_cache(url):
     except Exception as e:
         return Response(json.dumps({"error": str(e)}), mimetype="application/json")
     images = []
-    query_text = 'id IN (SELECT urlid FROM Images WHERE albumid IN (SELECT DISTINCT id FROM albums WHERE url LIKE "%s"))' \
-                 % (url,)
+    query_text = 'id IN (SELECT urlid FROM Images WHERE albumid IN ' \
+                 '(SELECT DISTINCT id FROM albums WHERE url LIKE "%s"))' % (url,)
+
     image_tuples = db.select('id, url', 'ImageURLs', query_text)
+
     for (urlid, imageurl) in image_tuples:
         image = {
             'thumb': path.join(thumb_path(urlid), '%d.jpg' % urlid),
@@ -157,37 +140,45 @@ def search_cache(url):
 def search_text(text):
     """ Prints posts/comments containing text in title/body. """
     text = AlphaNum.sub('', text)
-    posts = []
-    comments = []
-    related = []
-    query_text = 'commentid = 0 AND postid IN (SELECT DISTINCT id FROM Posts WHERE title LIKE "%%%s%%" or text LIKE "%%%s%%" ORDER BY ups DESC LIMIT 50) OR commentid IN (SELECT DISTINCT id FROM Comments WHERE body LIKE "%%%s%%" ORDER BY ups DESC LIMIT 50) GROUP BY postid, commentid LIMIT 50' \
-                 % (text, text, text)
+    query_text = 'commentid = 0 AND postid IN ' \
+                 '(SELECT DISTINCT id FROM Posts WHERE title LIKE "%%%s%%" ' \
+                 'or text LIKE "%%%s%%" ORDER BY ups DESC LIMIT 50) ' \
+                 'OR commentid IN ' \
+                 '(SELECT DISTINCT id FROM Comments WHERE body LIKE "%%%s%%" ' \
+                 'ORDER BY ups DESC LIMIT 50) ' \
+                 'GROUP BY postid, commentid LIMIT 50' % (text, text, text)
+
     images = db.select('urlid, albumid, postid, commentid', 'Images', query_text)
-    for (urlid, albumid, postid, commentid) in images:
-        # Get image's URL, dimensions & size
-        if commentid != 0:
-            # Comment
-            try:
-                comment_dict = build_comment(commentid, urlid, albumid)
-                comments.append(comment_dict)
-            except:
-                pass
-        else:
-            # Post
-            try:
-                post_dict = build_post(postid, urlid, albumid)
-                posts.append(post_dict)
-                related += build_related_comments(postid, urlid, albumid)
-            except:
-                pass
-    posts = sort_by_ranking(posts)
-    comments = sort_by_ranking(comments)
+
+    comments, posts, related = build_results_for_images(images)
     return Response(json.dumps({
         'url': 'text:%s' % text,
         'posts': posts,
         'comments': comments,
         'related': related
     }), mimetype="application/json")
+
+
+def build_results_for_images(images):
+    posts = []
+    related = []
+    comments = []
+
+    for urlid, albumid, postid, commentid in images:
+        if commentid != 0:
+            # Comment
+            comment_dict = build_comment(commentid, urlid, albumid)
+            comments.append(comment_dict)
+        else:
+            # Post
+            post_dict = build_post(postid, urlid, albumid)
+            posts.append(post_dict)
+            related += build_comments_for_post(postid)
+
+    posts = sort_by_ranking(posts)
+    comments = sort_by_ranking(comments)
+
+    return comments, posts, related
 
 
 ###################
@@ -210,49 +201,15 @@ def get_results_tuple_for_image(url):
 
 
 def get_results_tuple_for_hash(url, image_hash, downloaded):
-    posts = []
-    comments = []
-    related = []  # Comments contaiing links found in posts
-
     # Get matching hashes in 'Images' table.
     # This shows all of the posts, comments, and albums containing the hash
-    query_text = 'hashid IN'
-    query_text += ' (SELECT id FROM Hashes WHERE hash = "%s")' % image_hash
-    query_text += ' GROUP BY postid, commentid'
-    query_text += ' LIMIT 50'
+    query_text = 'hashid IN ' \
+                 '(SELECT id FROM Hashes WHERE hash = "%s") ' \
+                 'GROUP BY postid, commentid LIMIT 50' % (image_hash,)
+
     images = db.select('urlid, albumid, postid, commentid', 'Images', query_text)
-    for (urlid, albumid, postid, commentid) in images:
-        # Get image's URL, dimensions & size
-        if commentid != 0:
-            # Comment
-            try:
-                comment_dict = build_comment(commentid, urlid, albumid)
-                if comment_dict['author'] == 'rarchives':
-                    continue
-                comments.append(comment_dict)
-            except:
-                pass
-        else:
-            # Post
-            try:
-                post_dict = build_post(postid, urlid, albumid)
-                posts.append(post_dict)
+    comments, posts, related = build_results_for_images(images)
 
-                for rel in build_related_comments(postid, urlid, albumid):
-                    if rel['author'] == 'rarchives':
-                        continue
-                    related.append(rel)
-            except:
-                pass
-
-    for com in comments:
-        for rel in related:
-            if rel['hexid'] == com['hexid']:
-                related.remove(rel)
-                break
-
-    posts = sort_by_ranking(posts)
-    comments = sort_by_ranking(comments)
     return url, posts, comments, related, downloaded
 
 
@@ -359,15 +316,13 @@ def build_comment(commentid, urlid, albumid):
     return item
 
 
-def build_related_comments(postid, urlid, albumid):
+def build_comments_for_post(postid):
     """ Builds dict containing attributes about a comment related to a post"""
     items = []  # List to return
     # return items
 
     # Get info about post comment is replying to
-    (postsubreddit,
-     postpermalink,
-     posthex) \
+    (postsubreddit, postpermalink, posthex) \
         = db.select('subreddit, permalink, hexid', 'Posts', 'id = %d' % postid)[0]
 
     # Get & iterate over comments
