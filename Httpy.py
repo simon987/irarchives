@@ -1,5 +1,8 @@
-import requests
+from io import BytesIO
+
+from pycurl import Curl
 from urllib3 import disable_warnings
+
 from common import HTTP_PROXY
 
 disable_warnings()
@@ -17,69 +20,38 @@ class Httpy:
             * unshorten - returns (some) redirected URLs
     """
 
-    def __init__(self, user_agent=DEFAULT_USERAGENT, timeout=DEFAULT_TIMEOUT):
-        self.session = requests.Session()
-        self.user_agent = user_agent
-        self.session.headers = self.get_headers()
+    def __init__(self):
+        self.curl = Curl()
+        self.curl.setopt(self.curl.SSL_VERIFYPEER, 0)
+        self.curl.setopt(self.curl.SSL_VERIFYHOST, 0)
+        self.curl.setopt(self.curl.TIMEOUT, DEFAULT_TIMEOUT)
+        self.curl.setopt(self.curl.PROXY, HTTP_PROXY)
 
-        self.session.verify = False
-        self.session.proxies = {
-            "https": HTTP_PROXY,
-            "http": HTTP_PROXY
-        }
-
-        self.timeout = timeout
-
-    def get(self, url, timeout=DEFAULT_TIMEOUT, raise_exception=False):
+    def get(self, url):
         """ GET request """
-        result = ''
         try:
-            result = self.session.get(url, timeout=timeout, headers=self.get_headers()).text
+            body = BytesIO()
+            self.curl.setopt(self.curl.WRITEFUNCTION, body.write)
+            self.curl.setopt(self.curl.URL, url)
+            self.curl.perform()
+            r = body.getvalue()
+            body.close()
+            return r.decode()
         except Exception as e:
-            if raise_exception:
-                raise e
-        return result
+            raise e
 
-    def post(self, url, postdata=None, timeout=DEFAULT_TIMEOUT, raise_exception=False):
-        """
-            Submits a POST request to URL. Posts 'postdata' if
-            not None. URL-encodes postdata and strips Unicode chars.
-        """
-        result = ''
-
-        try:
-            result = self.session.post(url, timeout=timeout, data=postdata).text
-        except Exception as e:
-            if raise_exception:
-                raise e
-        return result
-
-    def download(self, url, timeout=DEFAULT_TIMEOUT):
+    def download(self, url):
         """ Downloads file from URL to save_as path. """
-        r = self.session.get(url, timeout=timeout)
-        if r.status_code == 200:
-            return r.content
-        raise Exception("HTTP" + str(r.status_code))
-
-    def get_meta(self, url, raise_exception=False, timeout=DEFAULT_TIMEOUT):
-        """
-            Returns a dict containing info about the URL.
-            Such as Content-Type, Content-Length, etc.
-        """
         try:
-            r = self.session.get(url, timeout=timeout)
-            return r.headers
+            body = BytesIO()
+            self.curl.setopt(self.curl.WRITEFUNCTION, body.write)
+            self.curl.setopt(self.curl.URL, url)
+            self.curl.perform()
+            r = body.getvalue()
+            body.close()
+            return r
         except Exception as e:
-            if raise_exception:
-                raise e
-        return {}
-
-    def clear_cookies(self):
-        self.session.cookies.clear()
-
-    def get_headers(self):
-        """ Returns default headers for URL requests """
-        return {'User-agent': self.user_agent}
+            raise Exception("HTTP" + str(self.curl.getinfo(self.curl.HTTP_CODE)))
 
     def between(self, source, start, finish):
         """

@@ -25,7 +25,6 @@ from util import load_list, get_links_from_body, should_download_image, is_direc
     should_parse_link
 
 reddit = ReddiWrap.ReddiWrap()
-web = Httpy()
 
 SCHEMA = {
     'Posts':
@@ -102,12 +101,13 @@ def main():
         Infinitely iterates over the list of subreddits
     """
     exit_if_already_started()
+    web = Httpy()
     while True:
         for timeframe in ['all', 'month', 'week']:
             subreddits = load_list('subs.txt')
             while subreddits:
                 # Grab all images/comments from sub, remove from list
-                parse_subreddit(subreddits.pop(0), timeframe)
+                parse_subreddit(subreddits.pop(0), timeframe, web)
 
 
 def exit_if_already_started():
@@ -121,7 +121,7 @@ def exit_if_already_started():
         sys.exit(0)
 
 
-def parse_subreddit(subreddit, timeframe):
+def parse_subreddit(subreddit, timeframe, web):
     """ Parses top 1,000 posts from subreddit within time frame. """
 
     total_post_count = 0
@@ -151,10 +151,10 @@ def parse_subreddit(subreddit, timeframe):
             logger.info('[%3d/%3d] Scraping http://redd.it/%s %s' %
                         (current_post_index, total_post_count, post.id, post.url[:50]))
 
-            parse_post(post)
+            parse_post(post, web)
 
 
-def parse_post(post):
+def parse_post(post, web):
     """ Scrapes and indexes a post and it's comments. """
     # Ignore posts less than 24 hours old
     if time.time() - post.created < 60 * 60 * 24:
@@ -190,19 +190,19 @@ def parse_post(post):
     if post.selftext != '':
         urls = get_links_from_body(post.selftext)
         for url in urls:
-            parse_url(url, postid=postid_db)
+            parse_url(url, web, postid=postid_db)
     else:
         # Attempt to retrieve hash(es) from link
-        parse_url(post.url, postid=postid_db)
+        parse_url(post.url, web, postid=postid_db)
 
     # Iterate over top-level comments
     if post.num_comments > 0:
         reddit.fetch_comments(post)
         for comment in post.comments:
-            parse_comment(comment, postid_db)
+            parse_comment(comment, web, postid_db)
 
 
-def parse_comment(comment, postid):
+def parse_comment(comment, web, postid):
     """
         Parses links from a comment. Populates DB.
         Recursively parses child comments.
@@ -220,17 +220,17 @@ def parse_comment(comment, postid):
                               comment.downvotes,
                               comment.created_utc))
         for url in urls:
-            parse_url(url, postid=postid, commentid=comid_db)
+            parse_url(url, web, postid=postid, commentid=comid_db)
     # Recurse over child comments
     for child in comment.children:
-        parse_comment(child, postid)
+        parse_comment(child, web, postid)
 
 
-def parse_url(url, postid=0, commentid=0):
+def parse_url(url, web, postid=0, commentid=0):
     """ Gets image hash(es) from URL, populates database """
 
     if is_direct_link(url):
-        parse_image(url, postid, commentid)
+        parse_image(url, web, postid, commentid)
         return True
 
     if not should_parse_link(url):
@@ -244,15 +244,8 @@ def parse_url(url, postid=0, commentid=0):
     if len(image_urls) > 1:
         albumid = get_or_create_album(url)
 
-    if len(image_urls) > 10:
-        logger.debug("Using multithreading to download large album")
-        pool = ThreadPool(processes=10)
-        pool.starmap(func=parse_image,
-                     iterable=zip(image_urls, repeat(postid), repeat(commentid), repeat(albumid)))
-        pool.close()
-    else:
-        for image_url in image_urls:
-            parse_image(image_url, postid, commentid, albumid)
+    for image_url in image_urls:
+        parse_image(image_url, web, postid, commentid, albumid)
     return True
 
 
@@ -264,7 +257,7 @@ def get_or_create_album(url):
     return albumid
 
 
-def parse_image(url, postid=0, commentid=0, albumid=0):
+def parse_image(url, web, postid=0, commentid=0, albumid=0):
     """
         Downloads & indexes image.
         Populates 'Hashes', 'ImageURLs', and 'Images' tables
@@ -275,7 +268,7 @@ def parse_image(url, postid=0, commentid=0, albumid=0):
         return
 
     try:
-        (hashid, urlid, downloaded) = get_hashid_and_urlid(url)
+        (hashid, urlid, downloaded) = get_hashid_and_urlid(url, web)
     except Exception as e:
         logger.error('Failed to calculate hash for %s\n'
                      'Exception: %s' % (url, str(e)))
@@ -287,7 +280,7 @@ def parse_image(url, postid=0, commentid=0, albumid=0):
     return True
 
 
-def get_hashid_and_urlid(url):
+def get_hashid_and_urlid(url, web):
     """
         Retrieves hash ID ('Hashes' table) and URL ID
         ('ImageURLs' table) for an image at a given URL.

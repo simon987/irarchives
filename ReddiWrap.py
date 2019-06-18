@@ -283,18 +283,14 @@ class ReddiWrap:
         Uses reddit's API.
     """
 
-    def __init__(self, user='', password='', user_agent=None):
+    def __init__(self):
         """
             Initializes instance fields, sets user agent.
             Logs into reddit if user and password are given.
         """
 
-        # Default user agent is awesome!
-        if user_agent is None:
-            user_agent = 'ReddiWrap'
-
         # Create object we will use to communicate with reddit's servers
-        self.web = Httpy(user_agent=user_agent)
+        self.web = Httpy()
 
         self.modhash = ''  # Hash used to authenticate/interact with user account
         self.last_url = ''  # The last URL retrieved
