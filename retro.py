@@ -1,4 +1,5 @@
 import json
+import traceback
 from collections import namedtuple
 from multiprocessing import Process, JoinableQueue as Queue
 from queue import Empty
@@ -20,6 +21,7 @@ def work_post(q):
     scanner.web.curl = Curl()
     scanner.web.curl.setopt(scanner.web.curl.SSL_VERIFYPEER, 0)
     scanner.web.curl.setopt(scanner.web.curl.SSL_VERIFYHOST, 0)
+    scanner.web.curl.setopt(scanner.web.curl.FOLLOWLOCATION, True)
 
     done = set()
 
@@ -94,7 +96,7 @@ def should_parse_url(url):
     return True
 
 
-THREADS = 200
+THREADS = 10
 threads = []
 queue = Queue(THREADS * 16)
 

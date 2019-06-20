@@ -252,6 +252,8 @@ class Scanner:
 
             logger.info("(+) Image ID(%s) [%dx%s %dB] #%d" % (imageid, width, height, size, imhash))
         except Exception as e:
+            if not str(e).startswith("HTTP"):
+                raise e
             logger.error(e)
 
 

@@ -119,7 +119,7 @@ class DB:
             res = conn.query("SELECT id from images "
                              "WHERE sha1=%s", (sha1,))
 
-        return None if not res else res[0]
+        return None if not res else res[0][0]
 
     def insert_imageurl(self, url, imageid, albumid, postid, commentid):
         with self.get_conn() as conn:
@@ -132,8 +132,8 @@ class DB:
                              "VALUES (%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING returning id ",
                              (width, height, size, imhash, sha1))
             # race condition: image was inserted after the existing_by_sha1 check
-            if res[0] is None:
-                return conn.query("SELECT id FROM images WHERE sha1=%s", (sha1,))
+            if not res:
+                res = conn.query("SELECT id FROM images WHERE sha1=%s", (sha1,))
 
         return None if not res else res[0][0]
 
@@ -142,8 +142,8 @@ class DB:
             res = conn.query("INSERT INTO albums (url) VALUES (%s) ON CONFLICT DO NOTHING RETURNING ID", (url,))
 
             # album already exists..
-            if res[0] is None:
-                return conn.query("SELECT id FROM albums WHERE url=%s", (url,))
+            if not res:
+                res = conn.query("SELECT id FROM albums WHERE url=%s", (url,))
 
         return None if not res else res[0][0]
 

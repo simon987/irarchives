@@ -25,6 +25,7 @@ class Httpy:
         self.curl.setopt(self.curl.SSL_VERIFYHOST, 0)
         self.curl.setopt(self.curl.TIMEOUT, DEFAULT_TIMEOUT)
         self.curl.setopt(self.curl.PROXY, HTTP_PROXY)
+        self.curl.setopt(self.curl.FOLLOWLOCATION, True)
 
     def get(self, url):
         """ GET request """
