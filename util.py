@@ -78,6 +78,10 @@ def get_links_from_body(body):
 
 
 def _is_ddl_image(url):
+
+    if "i.reddituploads.com" in url:
+        return True
+
     if '?' in url:
         url = url[:url.find('?')]
     return url.lower().endswith(ALLOWED_FILETYPES)

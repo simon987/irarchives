@@ -7,7 +7,6 @@ from common import HTTP_PROXY
 
 disable_warnings()
 
-DEFAULT_USERAGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:19.0) Gecko/20100101 Firefox/19.0'
 DEFAULT_TIMEOUT = 600
 
 
@@ -47,11 +46,14 @@ class Httpy:
             self.curl.setopt(self.curl.WRITEFUNCTION, body.write)
             self.curl.setopt(self.curl.URL, url)
             self.curl.perform()
+            if self.curl.getinfo(self.curl.HTTP_CODE) != 200:
+                raise Exception("HTTP" + str(self.curl.getinfo(self.curl.HTTP_CODE)))
+
             r = body.getvalue()
             body.close()
             return r
         except Exception as e:
-            raise Exception("HTTP" + str(self.curl.getinfo(self.curl.HTTP_CODE)))
+            raise Exception(str(e) + " HTTP" + str(self.curl.getinfo(self.curl.HTTP_CODE)))
 
     def between(self, source, start, finish):
         """

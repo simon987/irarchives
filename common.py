@@ -15,4 +15,4 @@ logger.addHandler(StreamHandler(sys.stdout))
 
 HTTP_PROXY = "http://localhost:5050"
 
-DBFILE = "reddit.db"
+DBFILE = "dbname=ir user=ir password=ir"

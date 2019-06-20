@@ -6,9 +6,9 @@ from flask import Blueprint, Response, request
 
 from DB import DB
 from Httpy import Httpy
-from ImageHash import avhash, thumb_path, image_from_buffer
 from common import DBFILE
-from util import clean_url, sort_by_ranking, is_user_valid
+from img_util import thumb_path, image_from_buffer, get_hash
+from util import clean_url, is_user_valid
 
 search_page = Blueprint('search', __name__, template_folder='templates')
 
@@ -64,15 +64,31 @@ def search_url(query):
         query = query.replace(' ', '%20')
 
     try:
-        query, posts, comments, related, downloaded = get_results_tuple_for_image(query)
+        hash = db.get_hash_from_url(url=query)
+
+        if not hash:
+            # Download image
+            image_buffer = web.download(url=query)
+            if not image_buffer:
+                raise Exception('unable to download image at %s' % query)
+
+            try:
+                im = image_from_buffer(image_buffer)
+                hash = get_hash(im)
+            except:
+                raise Exception("Could not identify image")
+
+        images = db.get_similar_images(hash)
+        comments, posts = db.build_result_for_images(images)
+
     except Exception as e:
+        raise e
         return Response(json.dumps({'error': str(e)}), mimetype="application/json")
 
     return Response(json.dumps({
         'posts': posts,
         'comments': comments,
-        'url': query,
-        'related': related
+        'url': query
     }), mimetype="application/json")
 
 
@@ -81,30 +97,13 @@ def search_user(user):
     if user.strip() == '' or not is_user_valid(user):
         raise Exception('invalid username')
 
-    # This search will pull up all posts and comments by the user
-    # NOTE It will also grab all comments containing links in the user's posts (!)
-    query_text = 'postid IN (SELECT DISTINCT id FROM Posts WHERE author LIKE "%s" ' \
-                 'ORDER BY ups DESC LIMIT 50) ' \
-                 'OR ' \
-                 'commentid IN (SELECT DISTINCT if FROM Comments WHERE author LIKE "%s" ' \
-                 'ORDER BY upds DESC LIMIT 50) ' \
-                 'GROUP BY postid, commentid' % (user, user)
-
-    images = db.select('urlid, albumid, postid, commentid', 'Images', query_text)
-    comments, posts, related = build_results_for_images(images)
-
-    # TODO: Not sure what that does
-    for com in comments:
-        for rel in related:
-            if rel['hexid'] == com['hexid']:
-                related.remove(rel)
-                break
+    images = db.get_images_from_author(author=user)
+    comments, posts = db.build_result_for_images(images)
 
     return Response(json.dumps({
         'url': 'user:%s' % user,
         'posts': posts,
-        'comments': comments,
-        'related': related
+        'comments': comments
     }), mimetype="application/json")
 
 
@@ -119,10 +118,7 @@ def search_cache(url):
     except Exception as e:
         return Response(json.dumps({"error": str(e)}), mimetype="application/json")
     images = []
-    query_text = 'id IN (SELECT urlid FROM Images WHERE albumid IN ' \
-                 '(SELECT DISTINCT id FROM albums WHERE url LIKE "%s"))' % (url,)
-
-    image_tuples = db.select('id, url', 'ImageURLs', query_text)
+    image_tuples = db.get_images_from_album_url(album_url=url)
 
     for (urlid, imageurl) in image_tuples:
         image = {
@@ -140,219 +136,14 @@ def search_cache(url):
 def search_text(text):
     """ Prints posts/comments containing text in title/body. """
     text = AlphaNum.sub('', text)
-    query_text = 'commentid = 0 AND postid IN ' \
-                 '(SELECT DISTINCT id FROM Posts WHERE title LIKE "%%%s%%" ' \
-                 'or text LIKE "%%%s%%" ORDER BY ups DESC LIMIT 50) ' \
-                 'OR commentid IN ' \
-                 '(SELECT DISTINCT id FROM Comments WHERE body LIKE "%%%s%%" ' \
-                 'ORDER BY ups DESC LIMIT 50) ' \
-                 'GROUP BY postid, commentid LIMIT 50' % (text, text, text)
+    images = db.get_images_from_text(text)
 
-    images = db.select('urlid, albumid, postid, commentid', 'Images', query_text)
+    comments, posts = db.build_result_for_images(images)
 
-    comments, posts, related = build_results_for_images(images)
     return Response(json.dumps({
         'url': 'text:%s' % text,
         'posts': posts,
-        'comments': comments,
-        'related': related
+        'comments': comments
     }), mimetype="application/json")
 
 
-def build_results_for_images(images):
-    posts = []
-    related = []
-    comments = []
-
-    for urlid, albumid, postid, commentid in images:
-        if commentid != 0:
-            # Comment
-            comment_dict = build_comment(commentid, urlid, albumid)
-            comments.append(comment_dict)
-        else:
-            # Post
-            post_dict = build_post(postid, urlid, albumid)
-            posts.append(post_dict)
-            related += build_comments_for_post(postid)
-
-    posts = sort_by_ranking(posts)
-    comments = sort_by_ranking(comments)
-
-    return comments, posts, related
-
-
-###################
-# Helper methods
-def get_results_tuple_for_image(url):
-    """ Returns tuple of posts, comments, related for an image """
-
-    try:
-        (hashid, downloaded) = get_hashid(url)
-        if hashid == -1:  # No hash matches
-            return url, [], [], [], downloaded
-        image_hashes = db.select('hash', 'Hashes', 'id = %d' % hashid)
-        if not image_hashes:
-            raise Exception('could not get hash for %s' % url)
-        image_hash = image_hashes[0][0]
-    except Exception as e:
-        raise e
-
-    return get_results_tuple_for_hash(url, image_hash, downloaded)
-
-
-def get_results_tuple_for_hash(url, image_hash, downloaded):
-    # Get matching hashes in 'Images' table.
-    # This shows all of the posts, comments, and albums containing the hash
-    query_text = 'hashid IN ' \
-                 '(SELECT id FROM Hashes WHERE hash = "%s") ' \
-                 'GROUP BY postid, commentid LIMIT 50' % (image_hash,)
-
-    images = db.select('urlid, albumid, postid, commentid', 'Images', query_text)
-    comments, posts, related = build_results_for_images(images)
-
-    return url, posts, comments, related, downloaded
-
-
-def get_hashid(url, timeout=10):
-    """ 
-        Retrieves hash ID ('Hashes' table) for image.
-        Returns -1 if the image's hash was not found in the table.
-        Does not modify DB! (read only)
-    """
-    cleaned_url = clean_url(url)
-    existing = db.select('hashid', 'ImageURLs', 'url LIKE "%s"' % cleaned_url)
-    if existing:
-        return existing[0][0], False
-
-    # Download image
-    image_buffer = web.download(url, timeout=timeout)
-    if not image_buffer:
-        raise Exception('unable to download image at %s' % url)
-
-    # Get image hash
-    try:
-        image = image_from_buffer(image_buffer)
-        image_hash = str(avhash(image))
-    except:
-        # Failed to get hash, delete image & raise exception
-        raise Exception("Could not identify image")
-
-    hashids = db.select('id', 'Hashes', 'hash = "%s"' % image_hash)
-    if not hashids:
-        return -1, True
-    return hashids[0][0], True
-
-
-###################
-# "Builder" methods
-def build_post(postid, urlid, albumid):
-    """ Builds dict containing attributes about a post """
-    item = {
-        'thumb': path.join(thumb_path(urlid), '%d.jpg' % urlid),
-    }
-
-    # Get info about post
-    (postid,
-     item['hexid'],
-     item['title'],
-     item['url'],
-     item['text'],
-     item['author'],
-     item['permalink'],
-     item['subreddit'],
-     item['comments'],
-     item['ups'],
-     item['downs'],
-     item['score'],
-     item['created'],
-     item['is_self'],
-     item['over_18']) = db.select('*', 'Posts', 'id = %d' % postid)[0]
-    # Get info about image
-    (item['imageurl'],
-     item['width'],
-     item['height'],
-     item['size']) \
-        = db.select('url, width, height, bytes', 'ImageURLs', 'id = %d' % urlid)[0]
-    # Set URL to be the album (if it's an album)
-    if albumid != 0:
-        item['url'] = db.select("url", "Albums", "id = %d" % albumid)[0][0]
-    return item
-
-
-def build_comment(commentid, urlid, albumid):
-    """ Builds dict containing attributes about a comment """
-    item = {
-        'thumb': path.join(thumb_path(urlid), '%d.jpg' % urlid),
-    }
-
-    # Thumbnail
-    if not path.exists(item['thumb']):
-        item['thumb'] = ''
-
-    # Get info about comment
-    (comid,
-     postid,
-     item['hexid'],
-     item['author'],
-     item['body'],
-     item['ups'],
-     item['downs'],
-     item['created']) \
-        = db.select('*', 'Comments', 'id = %d' % commentid)[0]
-
-    # Get info about post comment is replying to
-    (item['subreddit'],
-     item['permalink'],
-     item['postid']) \
-        = db.select('subreddit, permalink, hexid', 'Posts', 'id = %d' % postid)[0]
-    # Get info about image
-    (item['imageurl'],
-     item['width'],
-     item['height'],
-     item['size']) \
-        = db.select('url, width, height, bytes', 'ImageURLs', 'id = %d' % urlid)[0]
-    if albumid != 0:
-        item['url'] = db.select("url", "Albums", "id = %d" % albumid)[0][0]
-    return item
-
-
-def build_comments_for_post(postid):
-    """ Builds dict containing attributes about a comment related to a post"""
-    items = []  # List to return
-    # return items
-
-    # Get info about post comment is replying to
-    (postsubreddit, postpermalink, posthex) \
-        = db.select('subreddit, permalink, hexid', 'Posts', 'id = %d' % postid)[0]
-
-    # Get & iterate over comments
-    for (comid,
-         postid,
-         comhexid,
-         comauthor,
-         combody,
-         comups,
-         comdowns,
-         comcreated) \
-            in db.select('*', 'Comments', 'postid = %d' % postid):
-        item = {
-            # Post-specific attributes
-            'subreddit': postsubreddit,
-            'permalink': postpermalink,
-            'postid': posthex,
-            # Comment-specific attributes
-            'hexid': comhexid,
-            'author': comauthor,
-            'body': combody,
-            'ups': comups,
-            'downs': comdowns,
-            'created': comcreated,
-            'thumb': '',
-            # Image-specific attributes (irrelevant)
-            'imageurl': '',
-            'width': 0,
-            'height': 0,
-            'size': 0
-        }
-        items.append(item)
-    return items

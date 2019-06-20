@@ -1,20 +1,13 @@
 import json
 
 from flask import Blueprint, Response
+
+from DB import DB
 from common import DBFILE
-from ClientDB import DB
 from util import load_list
 
 db = DB(DBFILE)
 status_page = Blueprint('status', __name__, template_folder='templates')
-
-
-def get_count(table):
-    return db.select("count(*)", table)[0][0]
-
-
-def count_subs_db():
-    return db.select("count(distinct subreddit)", "Posts")[0][0]
 
 
 def count_subs_txt():
@@ -25,11 +18,10 @@ def count_subs_txt():
 def status():
     return Response(json.dumps({
         'status': {
-            'posts': get_count('Posts'),
-            'comments': get_count('Comments'),
-            'albums': get_count('Albums'),
-            'images': get_count('Images'),
-            'subreddits': count_subs_txt(),
-            'subreddits_pending': count_subs_txt()
+            'posts': db.get_post_count(),
+            'comments': db.get_comment_count(),
+            'albums': db.get_album_count(),
+            'images': db.get_image_count(),
+            'subreddits': count_subs_txt()
         },
     }), mimetype='application/json')
