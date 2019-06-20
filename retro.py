@@ -108,7 +108,7 @@ def scan_posts():
         threads.append(t)
         print("Started thread...")
 
-    with open("posts.ndjson") as f:
+    with open("/home/drone/Documents/posts.ndjson") as f:
         for line in f:
             post_json = json.loads(line)
             queue.put(Post(**post_json), timeout=100000000)

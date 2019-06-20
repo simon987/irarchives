@@ -22,7 +22,7 @@ def upload():
 
         if "d" in request.form:
             try:
-                distance = min(int(request.args["d"]), MAX_DISTANCE)
+                distance = min(int(request.form["d"]), MAX_DISTANCE)
             except:
                 distance = 0
         else:

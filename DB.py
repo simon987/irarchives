@@ -117,7 +117,7 @@ class DB:
                 hashes = conn.query("SELECT id, hash FROM images")
                 return [row[0] for row in hashes if popcount(int(row[1]) ^ hash) <= distance]
 
-        return None if not res else res[0]
+        return [] if not res else res[0]
 
     def get_image_from_sha1(self, sha1):
         with self.get_conn() as conn:

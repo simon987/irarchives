@@ -38,13 +38,14 @@ function uploadBlob(blob) {
     const reader = new FileReader();
     reader.onload = function (event) {
 
+        clearResults();
         const results_el = gebi('output');
         const pl = mkPreloader();
         results_el.appendChild(pl);
 
         const form = new FormData();
         form.append('fname', 'image');
-        form.append('distance', gebi('distance').value);
+        form.append('d', gebi('distance').value);
         form.append('data', event.target.result);
 
         const request = new XMLHttpRequest();
@@ -55,7 +56,6 @@ function uploadBlob(blob) {
                 if (request.status === 200) {
                     const json = JSON.parse(request.responseText);
                     gebi("search").value = json.url;
-                    clearResults();
                     handleSearchResponse(request.responseText);
                     pl.remove();
                 } else {
@@ -203,7 +203,7 @@ function handleSearchResponse(responseText) {
         return
     }
 
-    if (!resp.posts.length && !resp.comments.length && !resp.related.length) {
+    if (!resp.posts.length && !resp.comments.length) {
         results_el.appendChild(mkHeader(`No results`));
         return;
     }
@@ -221,14 +221,6 @@ function handleSearchResponse(responseText) {
         results_el.appendChild(mkHeader(`${resp.comments.length} comment${resp.comments.length === 1 ? '' : 's'}`));
         for (let i in resp['comments']) {
             results_el.appendChild(mkComment(resp['comments'][i]));
-        }
-    }
-
-    // RELATED COMMENTS
-    if (resp.related && resp.related.length > 0) {
-        results_el.appendChild(mkHeader(`${resp.related.length} related comment${resp.comments.length === 1 ? '' : 's'}`));
-        for (let i in resp['related']) {
-            results_el.appendChild(mkComment(resp['related'][i]));
         }
     }
 }

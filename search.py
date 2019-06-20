@@ -58,11 +58,14 @@ def search():
     # Post
     elif 'reddit.com/r/' in query and '/comments/' in query:
         # Reddit post, get its url and do a search_url() with it
-        if not query.endswith('.json'):
-            query += '.json'
-        r = web.get(query)
-        if '"url": "' in r:
-            query = web.between(r, '"url": "', '"')[0]
+        try:
+            if not query.endswith('.json'):
+                query += '.json'
+            r = web.get(query)
+            if '"url": "' in r:
+                query = web.between(r, '"url": "', '"')[0]
+        except Exception as e:
+            return Response(json.dumps({'error': str(e)}), mimetype="application/json")
 
     # URL
     return search_url(query, distance)
@@ -91,7 +94,6 @@ def search_url(query, distance):
         comments, posts = db.build_result_for_images(images)
 
     except Exception as e:
-        raise e
         return Response(json.dumps({'error': str(e)}), mimetype="application/json")
 
     return Response(json.dumps({
