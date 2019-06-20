@@ -39,6 +39,6 @@ def upload():
         return Response(json.dumps({
             'posts': posts,
             'comments': comments,
-            'url': "hash:" + image_hash
+            'url': "hash:" + str(image_hash)
         }), mimetype="application/json")
 
