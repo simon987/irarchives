@@ -31,7 +31,7 @@ def search():
 
     if "d" in request.args:
         try:
-            distance = max(int(request.args["q"]), MAX_DISTANCE)
+            distance = min(int(request.args["d"]), MAX_DISTANCE)
         except:
             distance = 0
     else:

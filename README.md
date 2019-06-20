@@ -23,7 +23,7 @@ Requirements
 ------------
 Tested with Python 3.7.2.
 
-The image calculations require Python Imaging Library, or [PIL](http://www.pythonware.com/products/pil/).
+Dependencies on Debian: `apt install libgmp-dev libmpfr-dev libmpc-dev`
 
 This project relies on [Architeuthis](https://github.com/simon987/Architeuthis) MITM proxy to respect rate-limits
 and handle http errors. 

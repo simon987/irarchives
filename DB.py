@@ -110,7 +110,7 @@ class DB:
 
     def get_similar_images(self, hash, distance=0):
         with self.get_conn() as conn:
-            if distance == 0:
+            if distance <= 0:
                 res = conn.query("SELECT id from images WHERE hash = %s", (hash,))
             else:
                 hash = int(hash)
