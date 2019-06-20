@@ -37,8 +37,14 @@ function getImageBlob(event) {
 function uploadBlob(blob) {
     const reader = new FileReader();
     reader.onload = function (event) {
+
+        const results_el = gebi('output');
+        const pl = mkPreloader();
+        results_el.appendChild(pl);
+
         const form = new FormData();
         form.append('fname', 'image');
+        form.append('distance', gebi('distance').value);
         form.append('data', event.target.result);
 
         const request = new XMLHttpRequest();
@@ -50,9 +56,6 @@ function uploadBlob(blob) {
                     const json = JSON.parse(request.responseText);
                     gebi("search").value = json.url;
                     clearResults();
-                    const results_el = gebi('output');
-                    const pl = mkPreloader();
-                    results_el.appendChild(pl);
                     handleSearchResponse(request.responseText);
                     pl.remove();
                 } else {

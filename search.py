@@ -13,7 +13,7 @@ from util import clean_url, is_user_valid
 search_page = Blueprint('search', __name__, template_folder='templates')
 
 AlphaNum = re.compile(r'[\W_]+')
-MAX_DISTANCE = 40
+MAX_DISTANCE = 30
 
 db = DB(DBFILE)
 web = Httpy()
