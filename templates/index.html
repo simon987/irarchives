@@ -28,9 +28,15 @@
     {# Search bar #}
     <div class="card-panel">
         <form onsubmit="return query()">
-            <div class="input-field">
-                <input id="search" type="text" required>
-                <label for="search">Search</label>
+            <div class="row">
+                <div class="input-field col l9">
+                    <input id="search" type="search" required>
+                    <label for="search">Search</label>
+                </div>
+                <div class="input-field col l3">
+                    <label for="distance">Distance (0 = perfect match)</label>
+                    <input id="distance" type="number" min="0" max="40" value="0">
+                </div>
             </div>
         </form>
     </div>

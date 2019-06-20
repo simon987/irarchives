@@ -70,10 +70,19 @@ window.onload = function () {
     get_subreddits();
     get_status();
     gebi("search").addEventListener("paste", function (e) {
-        console.log(e);
         const blob = getImageBlob(e);
         if (blob) {
             uploadBlob(blob)
+        }
+    }, false);
+    gebi("search").addEventListener("keypress", function (e) {
+        if (e.key === "Enter") {
+            query()
+        }
+    }, false);
+    gebi("distance").addEventListener("keypress", function (e) {
+        if (e.key === "Enter") {
+            query()
         }
     }, false);
 };
@@ -153,6 +162,7 @@ function clearResults() {
 
 function query() {
     clearResults();
+    const distance = gebi('distance').value;
     const results_el = gebi('output');
     const pl = mkPreloader();
     results_el.appendChild(pl);
@@ -160,7 +170,7 @@ function query() {
     const q = gebi("search").value;
 
     const request = new XMLHttpRequest();
-    request.open("GET", 'search?q=' + q, true);
+    request.open("GET", 'search?d=' + distance + '&q=' + q, true);
     request.send(null);
     request.onreadystatechange = function () {
         if (request.readyState === 4) {

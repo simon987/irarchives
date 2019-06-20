@@ -5,3 +5,4 @@ gallery-dl
 urllib3
 numpy
 imagehash
+gmpy2

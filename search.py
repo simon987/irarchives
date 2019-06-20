@@ -13,6 +13,7 @@ from util import clean_url, is_user_valid
 search_page = Blueprint('search', __name__, template_folder='templates')
 
 AlphaNum = re.compile(r'[\W_]+')
+MAX_DISTANCE = 40
 
 db = DB(DBFILE)
 web = Httpy()
@@ -27,6 +28,14 @@ def search():
         lquery = query.lower()
     else:
         return Response(json.dumps(""))
+
+    if "d" in request.args:
+        try:
+            distance = max(int(request.args["q"]), MAX_DISTANCE)
+        except:
+            distance = 0
+    else:
+        distance = 0
 
     # Cache
     if lquery.startswith('cache:'):
@@ -56,10 +65,10 @@ def search():
             query = web.between(r, '"url": "', '"')[0]
 
     # URL
-    return search_url(query)
+    return search_url(query, distance)
 
 
-def search_url(query):
+def search_url(query, distance):
     if ' ' in query:
         query = query.replace(' ', '%20')
 
@@ -78,7 +87,7 @@ def search_url(query):
             except:
                 raise Exception("Could not identify image")
 
-        images = db.get_similar_images(hash)
+        images = db.get_similar_images(hash, distance=distance)
         comments, posts = db.build_result_for_images(images)
 
     except Exception as e:

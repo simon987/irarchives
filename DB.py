@@ -4,6 +4,7 @@ from time import sleep
 
 import psycopg2
 from psycopg2.errorcodes import UNIQUE_VIOLATION
+from gmpy2 import popcount
 
 from common import logger
 from img_util import thumb_path
@@ -95,7 +96,7 @@ class DB:
         with self.get_conn() as conn:
             res = conn.query("SELECT i.id from imageurls "
                              "INNER JOIN images i on i.id = imageurls.imageid "
-                             "WHERE url LIKE %s", (url,))
+                             "WHERE url = %s", (url,))
 
         return None if not res else res[0][0]
 
@@ -103,14 +104,18 @@ class DB:
         with self.get_conn() as conn:
             res = conn.query("SELECT i.hash from imageurls "
                              "INNER JOIN images i on i.id = imageurls.imageid "
-                             "WHERE url LIKE %s", (url,))
+                             "WHERE url = %s", (url,))
 
         return None if not res else res[0][0]
 
-    def get_similar_images(self, hash):
+    def get_similar_images(self, hash, distance=0):
         with self.get_conn() as conn:
-            # TODO: add optionnnal hammering distance threshold here
-            res = conn.query("SELECT id from images WHERE hash = %s", (hash,))
+            if distance == 0:
+                res = conn.query("SELECT id from images WHERE hash = %s", (hash,))
+            else:
+                hash = int(hash)
+                hashes = conn.query("SELECT id, hash FROM images")
+                return [row[0] for row in hashes if popcount(int(row[1]) ^ hash) <= distance]
 
         return None if not res else res[0]
 
