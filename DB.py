@@ -49,8 +49,8 @@ class PgConn:
 
     def __exit__(self, type, value, traceback):
         try:
-            self.cur.close()
             self.conn.commit()
+            self.cur.close()
         except:
             pass
 
@@ -263,11 +263,11 @@ class DB:
 
     def get_image_count(self):
         with self.get_conn() as conn:
-            return conn.query("SELECT COUNT(*) FROM posts")[0][0]
+            return conn.query("SELECT COUNT(*) FROM images")[0][0]
 
     def get_comment_count(self):
         with self.get_conn() as conn:
-            return conn.query("SELECT COUNT(*) FROM posts")[0][0]
+            return conn.query("SELECT COUNT(*) FROM comments")[0][0]
 
     def get_album_count(self):
         with self.get_conn() as conn:

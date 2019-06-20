@@ -74,7 +74,7 @@ SCHEMA = {
         'albumid   INTEGER, \n\t' +
         'postid    INTEGER, \n\t' +
         'commentid INTEGER, \n\t' +
-        'FOREIGN KEY(imageid) REFERENCES Images(id), \n\t' +
+        'FOREIGN KEY(imageid) REFERENCES images(id), \n\t' +
         'FOREIGN KEY(postid)    REFERENCES posts(id),     \n\t' +
         'FOREIGN KEY(commentid) REFERENCES comments(id),  \n\t' +
         'FOREIGN KEY(albumid)   REFERENCES albums(id)',
