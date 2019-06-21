@@ -92,6 +92,9 @@ def is_direct_link(url):
 
 
 def should_download_image(url):
+    # Very long urls with cause problems with postgres, don't bother with them
+    if len(url) > 2712:
+        return False
     return _is_ddl_image(url)
 
 
