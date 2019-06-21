@@ -16,4 +16,4 @@ app.register_blueprint(search_page)
 app.register_blueprint(upload_page)
 
 if __name__ == '__main__':
-    app.run(port=5010)
+    app.run(port=3080)

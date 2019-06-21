@@ -28,6 +28,9 @@ Dependencies on Debian: `apt install libgmp-dev libmpfr-dev libmpc-dev`
 This project relies on [Architeuthis](https://github.com/simon987/Architeuthis) MITM proxy to respect rate-limits
 and handle http errors. 
 
+The search interface can be configured to use *redis* for caching 
+(see [common.py](common.py)).
+
 Notes
 -----
 There is no database included with the repo for obvious reasons. 

@@ -4,7 +4,22 @@ from logging import FileHandler, StreamHandler
 
 from flask_caching import Cache
 
-cache = Cache(config={'CACHE_TYPE': 'simple'})
+HTTP_PROXY = "http://localhost:5050"
+DBFILE = "dbname=ir user=ir password=ir"
+USE_REDIS = True
+
+if USE_REDIS:
+    cache = Cache(config={
+        "CACHE_TYPE": "redis",
+        "CACHE_KEY_PREFIX": "ir",
+        "CACHE_REDIS_HOST": "localhost",
+        "CACHE_REDIS_PORT": "6379"
+    })
+else:
+    cache = Cache(config={
+        "CACHE_TYPE": "simple"
+    })
+
 
 logger = logging.getLogger("default")
 logger.setLevel(logging.DEBUG)
@@ -17,5 +32,3 @@ for h in logger.handlers:
 logger.addHandler(file_handler)
 logger.addHandler(StreamHandler(sys.stdout))
 
-HTTP_PROXY = "http://localhost:5050"
-DBFILE = "dbname=ir user=ir password=ir"

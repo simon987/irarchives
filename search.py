@@ -6,7 +6,7 @@ from flask import Blueprint, Response, request
 
 from DB import DB
 from Httpy import Httpy
-from common import DBFILE
+from common import DBFILE, cache, logger
 from img_util import thumb_path, image_from_buffer, get_hash
 from util import clean_url, is_user_valid
 
@@ -20,6 +20,7 @@ web = Httpy()
 
 
 @search_page.route("/search")
+@cache.cached(timeout=3600 * 24, query_string=True)
 def search():
     """ Searches for a single URL, prints results """
 
