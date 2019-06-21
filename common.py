@@ -2,6 +2,10 @@ import logging
 import sys
 from logging import FileHandler, StreamHandler
 
+from flask_caching import Cache
+
+cache = Cache(config={'CACHE_TYPE': 'simple'})
+
 logger = logging.getLogger("default")
 logger.setLevel(logging.DEBUG)
 
@@ -14,5 +18,4 @@ logger.addHandler(file_handler)
 logger.addHandler(StreamHandler(sys.stdout))
 
 HTTP_PROXY = "http://localhost:5050"
-
 DBFILE = "dbname=ir user=ir password=ir"

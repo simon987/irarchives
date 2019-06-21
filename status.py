@@ -3,7 +3,7 @@ import json
 from flask import Blueprint, Response
 
 from DB import DB
-from common import DBFILE
+from common import DBFILE, cache
 from util import load_list
 
 db = DB(DBFILE)
@@ -15,6 +15,7 @@ def count_subs_txt():
 
 
 @status_page.route("/status")
+@cache.cached(timeout=600)
 def status():
     return Response(json.dumps({
         'status': {
