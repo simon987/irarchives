@@ -8,6 +8,11 @@ Summary
 -------
 NSFW reverse image search for reddit
 
+![demo](demo.gif)
+Realtime dhash demo. The hash (on the right) is stored as 144-bit 
+integer. We can compute the similarity of two images by counting the number
+ of matching bits of their hashes.
+
 Overview
 --------
 Many NSFW reddit posts contain more information about an image. 
