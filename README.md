@@ -6,20 +6,19 @@ irarchives
 
 Summary
 -------
-NSFW reverse image search for reddit
+Reverse image/video search for reddit
 
 ![demo](demo.gif)
-Realtime dhash demo. The hash (on the right) is stored as 144-bit 
+Realtime dhash demo. The hash (on the right) is stored as a 144-bit 
 integer. We can compute the similarity of two images by counting the number
  of matching bits of their hashes.
 
 Overview
 --------
-Many NSFW reddit posts contain more information about an image. 
 
 The repo contains:
-* a script to scrape images from reddit posts and store the data in a database.
-* a web interface for searching the database
+* A script to scrape images from reddit posts and store the data in a database.
+* A web interface for searching the database
 
 ### Database schema
 ![schema](schema.png)
@@ -35,7 +34,3 @@ and handle http errors.
 
 The search interface can be configured to use *redis* for caching 
 (see [common.py](common.py)).
-
-Notes
------
-There is no database included with the repo for obvious reasons. 
