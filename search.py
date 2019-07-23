@@ -28,10 +28,10 @@ class SearchResults:
     __slots__ = "url", "hits", "error", "result_count"
 
     def __init__(self, hits, error=None, url=""):
-        self.url: str = url
-        self.hits: dict = hits
-        self.error: str = error
-        self.result_count: int = len(hits)
+        self.url = url
+        self.hits = hits
+        self.error = error
+        self.result_count = len(hits)
 
     def json(self):
 

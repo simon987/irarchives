@@ -6,7 +6,7 @@ import psycopg2
 from psycopg2.errorcodes import UNIQUE_VIOLATION
 
 from common import logger, SQL_DEBUG
-from img_util import thumb_path, get_sha1
+from img_util import thumb_path
 from util import clean_url
 
 
@@ -15,9 +15,9 @@ class SearchResult:
                 "author", "item", "ups", "downs", "hexid", "author"
 
     def __init__(self, permalink, subreddit, created, item, ups, downs, hexid, author):
-        self.permalink: str = permalink
-        self.subreddit: str = subreddit
-        self.created: int = created
+        self.permalink = permalink
+        self.subreddit = subreddit
+        self.created = created
         self.item = item
         self.ups = ups
         self.downs = downs
