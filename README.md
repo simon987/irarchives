@@ -13,11 +13,6 @@ Realtime dhash demo. The hash (on the right) is stored as a 144-bit
 integer. We can compute the similarity of two images by counting the number
  of matching bits of their hashes.
 
-![demo](demo.gif)
-Realtime dhash demo. The hash (on the right) is stored as 144-bit 
-integer. We can compute the similarity of two images by counting the number
- of matching bits of their hashes.
-
 Overview
 --------
 
