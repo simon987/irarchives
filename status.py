@@ -21,6 +21,7 @@ def status():
         'status': {
             'posts': db.get_post_count(),
             'comments': db.get_comment_count(),
+            'videos': db.get_videoframe_count(),
             'albums': db.get_album_count(),
             'images': db.get_image_count(),
             'subreddits': count_subs_txt()

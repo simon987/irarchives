@@ -6,3 +6,5 @@ urllib3
 numpy
 imagehash
 gmpy2
+flask-caching
+redis

@@ -5689,8 +5689,8 @@ input[type=tel]:not(.browser-default):focus:not([readonly]),
 input[type=number]:not(.browser-default):focus:not([readonly]),
 input[type=search]:not(.browser-default):focus:not([readonly]),
 textarea.materialize-textarea:focus:not([readonly]) {
-  border-bottom: 1px solid #424242;
-  box-shadow: 0 1px 0 0 #424242;
+  border-bottom: 1px solid #424242 !important;
+  box-shadow: 0 1px 0 0 #424242 !important;
 }
 input:not([type]):focus:not([readonly]) + label,
 input[type=text]:not(.browser-default):focus:not([readonly]) + label,

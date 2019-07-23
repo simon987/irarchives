@@ -1,24 +1,15 @@
 import re
 
 from common import logger
+import os
 
 LINK_RE = re.compile(r'\[.*\]\(([^)]+)\)')
-SUB_RE = re.compile(r"^(.*)/r/(\w+)"
-                    r"($|/|/about/(.*)|/wiki/(.*)|/(top|new|hot|rising|controvertial|gilded)/\?.*|/comments/(.*))"
+SUB_RE = re.compile(r"^(.*)/r/([\w+]+)"
+                    r"($|/|/about/(.*)|/wiki/(.*)|/(top|new|hot|rising|controvertial|gilded)/?\?.*|/comments/(.*))"
                     r"($|\?.*$)")
 USER_RE = re.compile("^https?://(.*)/(u|user)/(\\w+)($|/)$")
 
-TRUSTED_AUTHORS = [
-    '4_pr0n',
-    'pervertedbylanguage',
-    'WakingLife']
-TRUSTED_SUBREDDITS = [
-    'AmateurArchives',
-    'gonewild',
-    'pornID',
-    'tipofmypenis',
-    'UnrealGirls']
-ALLOWED_FILETYPES = (
+IMAGE_FILETYPES = (
     # :orig for twitter cdn
     '.jpg',
     '.jpg:orig',
@@ -31,6 +22,13 @@ ALLOWED_FILETYPES = (
     '.tiff',
     '.bmp',
     '.webp'
+)
+
+# Reminder that .gifv is not a real file type, it should be passed to gallery-dl so it can pull the real
+# file url
+VIDEO_FILETYPES = (
+    ".webm",
+    ".mp4",
 )
 
 
@@ -57,8 +55,13 @@ def should_parse_link(url):
         logger.debug('Skipping url %s: Youtube' % url)
         return False
 
-    if "reddit.com/search?q=" in url or "github.com" in url:
+    if "reddit.com/search?q=" in url or "github.com" in url or\
+            "wikipedia.org" in url or "addons.mozilla.org" in url:
         logger.debug('Skipping url %s: Misc' % url)
+        return False
+
+    # TODO: temporary
+    if "instagram.com" in url:
         return False
 
     return True
@@ -84,17 +87,17 @@ def _is_ddl_image(url):
 
     if '?' in url:
         url = url[:url.find('?')]
-    return url.lower().endswith(ALLOWED_FILETYPES)
+    return url.lower().endswith(IMAGE_FILETYPES)
 
 
-def is_direct_link(url):
-    return _is_ddl_image(url)
+def is_video(url):
+
+    if '?' in url:
+        url = url[:url.find('?')]
+    return url.lower().endswith(VIDEO_FILETYPES)
 
 
-def should_download_image(url):
-    # Very long urls with cause problems with postgres, don't bother with them
-    if len(url) > 2712:
-        return False
+def is_image_direct_link(url):
     return _is_ddl_image(url)
 
 
@@ -127,19 +130,8 @@ def is_user_valid(username):
     return valid
 
 
-def sort_by_ranking(objs):
-    """ Sorts list of posts/comments based on heuristic. """
-    for obj in objs:
-        if 'comments' in obj:
-            obj['ranking'] = int(obj['comments'])
-            obj['ranking'] += int(obj['ups'])
-        else:
-            obj['ranking'] = int(obj['ups'])
-        if 'url' in obj and 'imgur.com/a/' in obj['url'] \
-                or 'imageurl' in obj and 'imgur.com/a/' in obj['imageurl']:
-            obj['ranking'] += 600
-        if obj['author'] in TRUSTED_AUTHORS:
-            obj['ranking'] += 500
-        if obj['subreddit'] in TRUSTED_SUBREDDITS:
-            obj['ranking'] += 400
-    return sorted(objs, reverse=True, key=lambda tup: tup['ranking'])
+def thumb_path(thumb_id, folder="im"):
+    digit1 = str(thumb_id)[0]
+    digit2 = str(thumb_id)[1] if thumb_id >= 10 else "0"
+    return os.path.join('static/thumbs/', folder, digit1, digit2)
+

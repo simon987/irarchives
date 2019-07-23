@@ -7,6 +7,8 @@ What this script does:
     3. Stores image information (hash, size, etc) in a database
     4. If post/comment contains image/link, stores post/comment info in database
 """
+import binascii
+import os
 import sys
 import time
 from subprocess import getstatusoutput
@@ -15,9 +17,10 @@ import ReddiWrap
 from DB import DB
 from Httpy import Httpy
 from common import logger, DBFILE
-from img_util import get_image_urls, create_thumb, image_from_buffer, get_sha1, get_hash
-from util import load_list, get_links_from_body, should_download_image, is_direct_link, clean_url, \
-    should_parse_link
+from img_util import get_image_urls, create_thumb, image_from_buffer, get_sha1, get_hash, thumb_path
+from util import load_list, get_links_from_body, is_image_direct_link, clean_url, \
+    should_parse_link, is_video
+from video_util import info_from_video_buffer, flatten_video_info
 
 reddit = ReddiWrap.ReddiWrap()
 
@@ -60,6 +63,37 @@ SCHEMA = {
         'width   INTEGER,     \n\t' +
         'height  INTEGER,     \n\t' +
         'bytes   INTEGER',
+
+    'videos':
+        '\n\t' +
+        'id  SERIAL PRIMARY KEY, \n\t' +
+        'sha1   TEXT UNIQUE, \n\t' +
+        'width   INTEGER,     \n\t' +
+        'height  INTEGER,     \n\t' +
+        'bitrate  INTEGER,     \n\t' +
+        'codec  TEXT,     \n\t' +
+        'format  TEXT,     \n\t' +
+        'duration  INTEGER,     \n\t' +
+        'frames  INTEGER,     \n\t' +
+        'bytes   INTEGER',
+
+    'videoframes':
+        'id      SERIAL PRIMARY KEY, \n\t' +
+        'hash     NUMERIC NOT NULL, \n\t' +
+        'videoid     INTEGER NOT NULL, \n\t' +
+        'FOREIGN KEY(videoid) REFERENCES videos(id)',
+
+    'videourls':
+        '\n\t' +
+        'id      SERIAL PRIMARY KEY, \n\t' +
+        'url     TEXT, \n\t' +
+        'clean_url     TEXT, \n\t' +
+        'videoid     INTEGER NOT NULL, \n\t' +
+        'postid    INTEGER, \n\t' +
+        'commentid INTEGER, \n\t' +
+        'FOREIGN KEY(videoid) REFERENCES videos(id), \n\t' +
+        'FOREIGN KEY(postid)    REFERENCES posts(id),     \n\t' +
+        'FOREIGN KEY(commentid) REFERENCES comments(id)',
 
     'Albums':
         '\n\t' +
@@ -193,8 +227,12 @@ class Scanner:
     def parse_url(self, url, postid=None, commentid=None):
         """ Gets image hash(es) from URL, populates database """
 
-        if is_direct_link(url):
+        if is_image_direct_link(url):
             self.parse_image(url, postid=postid, commentid=commentid, albumid=None)
+            return True
+
+        if is_video(url):
+            self.parse_video(url, postid=postid, commentid=commentid)
             return True
 
         if not should_parse_link(url):
@@ -206,26 +244,20 @@ class Scanner:
         # We assume that any url that yields more than 1 image is an album
         albumid = None
         if len(image_urls) > 1:
-            albumid = self.db.get_or_create_album(url)
+            albumid = self.db.get_or_create_album(url)  # TODO: fix url len thing
 
         for image_url in image_urls:
-            self.parse_image(image_url, postid, commentid, albumid)
+            if is_image_direct_link(image_url):
+                self.parse_image(image_url, postid, commentid, albumid)
+            elif is_video(image_url):
+                self.parse_video(image_url, postid, commentid)
         return True
 
     def parse_image(self, url, postid=None, commentid=None, albumid=None):
-        """
-            Downloads & indexes image.
-            Populates 'Hashes', 'ImageURLs', and 'Images' tables
-        """
 
-        if not should_download_image(url):
-            logger.debug('Skipping file %s' % url)
-            return
-
-        c_url = clean_url(url)
-        existing_by_url = self.db.get_image_from_url(c_url)
+        existing_by_url = self.db.get_image_from_url(url)
         if existing_by_url:
-            self.db.insert_imageurl(url=c_url, imageid=existing_by_url, postid=postid, commentid=commentid,
+            self.db.insert_imageurl(url=url, imageid=existing_by_url, postid=postid, commentid=commentid,
                                     albumid=albumid)
             return
 
@@ -235,7 +267,7 @@ class Scanner:
             sha1 = get_sha1(image_buffer)
             existing_by_sha1 = self.db.get_image_from_sha1(sha1)
             if existing_by_sha1:
-                self.db.insert_imageurl(url=c_url, imageid=existing_by_sha1, postid=postid, commentid=commentid,
+                self.db.insert_imageurl(url=url, imageid=existing_by_sha1, postid=postid, commentid=commentid,
                                         albumid=albumid)
                 return
 
@@ -250,16 +282,61 @@ class Scanner:
             del im
             del image_buffer
 
-            logger.info("(+) Image ID(%s) [%dx%s %dB] #%d" % (imageid, width, height, size, imhash))
+            logger.info("(+) Image ID(%s) [%dx%s %dB] #%s" %
+                        (
+                            imageid, width, height, size,
+                            binascii.hexlify(imhash).decode("ascii")
+                        ))
+        except Exception as e:
+            logger.error(e)
+
+    def parse_video(self, url, postid=None, commentid=None):
+
+        existing_by_url = self.db.get_video_from_url(url)
+        if existing_by_url:
+            self.db.insert_videourl(url=url, video_id=existing_by_url, postid=postid, commentid=commentid)
+            return
+
+        try:
+            video_buffer = self.web.download(url)
         except Exception as e:
             if not str(e).startswith("HTTP"):
                 raise e
             logger.error(e)
+            return
+
+        sha1 = get_sha1(video_buffer)
+        existing_by_sha1 = self.db.get_video_from_sha1(sha1)
+        if existing_by_sha1:
+            self.db.insert_videourl(url=url, video_id=existing_by_sha1, postid=postid, commentid=commentid)
+            return
+
+        frames, info = info_from_video_buffer(video_buffer, url[url.rfind(".") + 1:].replace("gifv", "mp4"))
+        if not frames:
+            logger.error("no frames todo elaborate")
+            return
+
+        info = flatten_video_info(info)
+
+        video_id = self.db.insert_video(sha1, size=len(video_buffer), info=info)
+        self.db.insert_videourl(url, video_id, postid, commentid)
+
+        frame_ids = self.db.insert_video_frames(video_id, frames)
+
+        for i, thumb in enumerate(frames.values()):
+            dirpath = thumb_path(frame_ids[i], "vid")
+            os.makedirs(dirpath, exist_ok=True)
+            thumb.save(os.path.join(dirpath, "%d.jpg" % frame_ids[i]))
+
+        logger.info("(+) Video ID(%s) [%dx%s %dB] %d frames" %
+                    (video_id, info["width"], info["height"],
+                     len(video_buffer), len(frames)))
 
 
 if __name__ == '__main__':
     try:
         scanner = Scanner()
         scanner.run()
+
     except KeyboardInterrupt:
         logger.error('Interrupted (^C)')

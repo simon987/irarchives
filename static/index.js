@@ -45,7 +45,6 @@ function uploadBlob(blob) {
 
         const form = new FormData();
         form.append('fname', 'image');
-        form.append('d', gebi('distance').value);
         form.append('data', event.target.result);
 
         const request = new XMLHttpRequest();
@@ -70,22 +69,13 @@ function uploadBlob(blob) {
 
 window.onload = function () {
     M.Tabs.init(document.getElementById("rri_menu"), {});
+    M.Tabs.init(document.getElementById("search-menu"), {});
     get_subreddits();
     get_status();
     gebi("search").addEventListener("paste", function (e) {
         const blob = getImageBlob(e);
         if (blob) {
             uploadBlob(blob)
-        }
-    }, false);
-    gebi("search").addEventListener("keypress", function (e) {
-        if (e.key === "Enter") {
-            query()
-        }
-    }, false);
-    gebi("distance").addEventListener("keypress", function (e) {
-        if (e.key === "Enter") {
-            query()
         }
     }, false);
 };
@@ -143,6 +133,7 @@ function get_status() {
                 const resp = JSON.parse(request.responseText)["status"];
                 gebi("db_images").innerText = number_commas(resp['images']);
                 gebi("db_posts").innerText = number_commas(resp['posts']);
+                gebi("db_videos").innerText = number_commas(resp['videos']);
                 gebi("db_comments").innerText = number_commas(resp['comments']);
                 gebi("db_albums").innerText = number_commas(resp['albums']);
                 gebi("db_subreddits").innerText = number_commas(resp['subreddits']);
@@ -165,15 +156,35 @@ function clearResults() {
 
 function query() {
     clearResults();
-    const distance = gebi('distance').value;
+
+    const q = gebi("search").value;
+    let params = {};
+
+    q.split(/\s+/).forEach(tok => {
+        params[tok.match(/^(?!https?)(\w+):/) ? tok.match(/^(?!https?)^(\w+):/)[1] : "image"]
+            = tok.substring(tok.match(/^(?!https?)(\w+):/) ? tok.match(/^\w+:/)[0].length : 0)
+    })
+
+    params["d"] = params["d"] || 0
+    let queryString = "search?d=" + params["d"]
+
+    if (params["image"]) {
+        queryString += '&img=' + params["image"]
+    }
+    if (params["frames"]) {
+        queryString += '&f=' + params["frames"]
+    }
+    if (params["video"]) {
+        queryString += '&vid=' + params["video"]
+    }
+    //TODO: sha1 etc
+
     const results_el = gebi('output');
     const pl = mkPreloader();
     results_el.appendChild(pl);
 
-    const q = gebi("search").value;
-
     const request = new XMLHttpRequest();
-    request.open("GET", 'search?d=' + distance + '&q=' + q, true);
+    request.open("GET", queryString, true);
     request.send(null);
     request.onreadystatechange = function () {
         if (request.readyState === 4) {
@@ -198,35 +209,28 @@ function handleSearchResponse(responseText) {
         return;
     }
 
+    //TODO: no!
     if (resp['images']) {
         results_el.appendChild(mkGallery(resp['images']));
         return
     }
 
-    if (!resp.posts.length && !resp.comments.length) {
-        results_el.appendChild(mkHeader(`No results`));
+    if (resp.result_count === 0) {
+        results_el.appendChild(mkHeader('No results'));
         return;
     }
 
-    // POSTS
-    if (resp.posts && resp.posts.length > 0) {
-        results_el.appendChild(mkHeader(`${resp.posts.length} post${resp.comments.length === 1 ? '' : 's'}`));
-        for (let i in resp['posts']) {
-            results_el.appendChild(mkPost(resp['posts'][i]));
-        }
-    }
-
-    // COMMENTS
-    if (resp.comments && resp.comments.length > 0) {
-        results_el.appendChild(mkHeader(`${resp.comments.length} comment${resp.comments.length === 1 ? '' : 's'}`));
-        for (let i in resp['comments']) {
-            results_el.appendChild(mkComment(resp['comments'][i]));
+    results_el.appendChild(mkHeader(`${resp.result_count} item${resp.result_count === 1 ? '' : 's'}`));
+    for (let i in resp['hits']) {
+        if (resp['hits'][i]['type'] === 'comment') {
+            results_el.appendChild(mkComment(resp['hits'][i]));
+        } else {
+            results_el.appendChild(mkPost(resp['hits'][i]));
         }
     }
 }
 
 function get_time(seconds) {
-    let diff = Math.round(new Date().getTime() / 1000) - seconds;
     const d = {
         'second': 60,
         'minute': 60,
@@ -236,18 +240,21 @@ function get_time(seconds) {
         'year': 1000
     };
     for (let key in d) {
-        if (diff <= d[key]) {
-            diff = diff.toFixed(0);
-            let result = diff + ' ';
+        if (seconds <= d[key]) {
+            seconds = seconds.toFixed(0);
+            let result = seconds + ' ';
             result += key;
-            if (diff !== "1")
+            if (seconds !== "1")
                 result += 's';
-            result += ' ago';
             return result;
         }
-        diff /= d[key];
+        seconds /= d[key];
     }
-    return '? days ago';
+    return '?';
+}
+
+function get_time_diff(seconds) {
+    return get_time(Math.round(new Date().getTime() / 1000) - seconds);
 }
 
 function bytes_to_readable(bytes) {
@@ -259,6 +266,39 @@ function bytes_to_readable(bytes) {
         }
     }
     return '?bytes';
+}
+
+function get_video_thumbs(videoId, cb) {
+
+    const request = new XMLHttpRequest();
+    request.open("GET", "/video_thumbs/" + videoId, true);
+    request.send(null);
+    request.onreadystatechange = function () {
+        if (request.readyState === 4) {
+            if (request.status === 200) {
+                cb(
+                    JSON.parse(request.responseText)["thumbs"]
+                        .map(t => t.toString())
+                        .map(tn => {
+                            return "/static/thumbs/vid/" + tn[0]
+                                + "/" + (tn.length > 1 ? tn[1] : "0")
+                                + "/" + tn + ".jpg";
+                        })
+                )
+            }
+        }
+    };
+}
+
+function bits_to_readable(bytes) {
+    const scale = ['b', 'Kb', 'Mb'];
+    for (let i = scale.length - 1; i >= 0; i--) {
+        const cur = Math.pow(1024, i);
+        if (cur < bytes) {
+            return (bytes / cur).toFixed(1) + scale[i];
+        }
+    }
+    return '?bits';
 }
 
 function mkHeader(text) {
@@ -299,11 +339,16 @@ function mkPost(post) {
     cardTitle.appendChild(document.createTextNode(post.title));
     cardContent.appendChild(cardTitle);
 
-    const cardImageWrapper = document.createElement('div');
-    cardImageWrapper.setAttribute('class', 'card-image img_wrapper');
+    const cardItemWrapper = document.createElement('div');
+    cardItemWrapper.setAttribute('class', 'card-image img_wrapper');
 
-    const cardImage = document.createElement('img');
-    cardImage.setAttribute('src', post.thumb);
+    let cardItem;
+    if (post.item.type === 'image') {
+        cardItem = document.createElement('img');
+        cardItem.setAttribute('src', post.item.thumb);
+    } else {
+        cardItem = makeSlideShow(post.item.video_id, post.item.duration);
+    }
 
     const contentWrapper = document.createElement('div');
     contentWrapper.setAttribute('class', 'row');
@@ -318,11 +363,15 @@ function mkPost(post) {
 
     const info = document.createElement('p');
     info.appendChild(document.createTextNode('Submitted '));
-    info.appendChild(mkBold(get_time(post.created), new Date(post.created * 1000).toUTCString()));
-    info.appendChild(document.createTextNode(' by '));
-    info.appendChild(mkCallback(function () {
-        research("user:" + post.author)
-    }, post.author, 'Search this user'));
+    info.appendChild(mkBold(get_time_diff(post.created), new Date(post.created * 1000).toUTCString()));
+    info.appendChild(document.createTextNode(' ago by '));
+    if (post.author.toLowerCase() !== "[deleted]") {
+        info.appendChild(mkCallback(function () {
+            research("user:" + post.author)
+        }, post.author, 'Search this user'));
+    } else {
+        info.appendChild(document.createTextNode(post.author));
+    }
     info.appendChild(document.createTextNode(' to '));
     info.appendChild(mkLink('http://www.reddit.com/r/' + post.subreddit, post.subreddit));
     right.appendChild(info);
@@ -330,22 +379,28 @@ function mkPost(post) {
     right.appendChild(mkLink('http://www.reddit.com/' + post.permalink,
         (post.comments === 1 ? "1 comment" : `${post.comments} comments`)
     ));
-    if (post.width !== 0 && post.height !== 0) {
-        right.appendChild(document.createTextNode(' '));
-        right.appendChild(mkLink(post.imageurl,
-            `  (⛶ ${post.width}x${post.height} ${bytes_to_readable(post.size)})`
-        ));
-    }
 
-    card.appendChild(cardImageWrapper);
+    right.appendChild(document.createTextNode(' '));
+    right.appendChild(mkLink(post.item.url,
+        post.item.type === 'image'
+            ? `  (⛶ ${post.item.width}x${post.item.height} ${bytes_to_readable(post.item.size)})`
+            : `  (▷ ${post.item.height}p ${bits_to_readable(post.item.bitrate)}/s ${get_time(post.item.duration)} ${bytes_to_readable(post.item.size)})`
+    ));
+
+
+    card.appendChild(cardItemWrapper);
     card.appendChild(cardStacked);
-    card.appendChild(mkExtSearchLinks(post.imageurl));
-    cardImageWrapper.appendChild(cardImage);
+
+    cardItemWrapper.appendChild(cardItem);
     cardStacked.appendChild(cardContent);
     cardContent.appendChild(contentWrapper);
     contentWrapper.appendChild(left);
     contentWrapper.appendChild(right);
-    contentWrapper.appendChild(mkExtSearchLinksMobile(post.imageurl));
+
+    if (post.item.type === 'image') {
+        card.appendChild(mkExtSearchLinks(post.item.url));
+        contentWrapper.appendChild(mkExtSearchLinksMobile(post.item.url));
+    }
 
     return card;
 }
@@ -353,9 +408,20 @@ function mkPost(post) {
 function mkComment(comment) {
 
     const card = document.createElement('div');
-    card.setAttribute('class', 'card comment');
+    card.setAttribute('class', 'card horizontal comment');
     const cardContent = document.createElement('div');
     cardContent.setAttribute('class', 'card-content');
+
+    const cardItemWrapper = document.createElement('div');
+    cardItemWrapper.setAttribute('class', 'card-image img_wrapper');
+
+    let cardItem;
+    if (comment.item.type === 'image') {
+        cardItem = document.createElement('img');
+        cardItem.setAttribute('src', comment.item.thumb);
+    } else {
+        cardItem = makeSlideShow(comment.item.video_id, comment.item.duration);
+    }
 
     const contentWrapper = document.createElement('div');
     contentWrapper.setAttribute('class', 'row');
@@ -369,26 +435,34 @@ function mkComment(comment) {
 
     const info = document.createElement('p');
     info.appendChild(document.createTextNode('Commented '));
-    info.appendChild(mkBold(get_time(comment.created), new Date(comment.created * 1000).toUTCString()));
-    info.appendChild(document.createTextNode(' by '));
-    info.appendChild(mkCallback(function () {
-        research("user:" + comment.author)
-    }, comment.author, 'Search this user'));
-    info.appendChild(mmd(comment.body, comment.url === null ? comment.imageurl : comment.url));
+    info.appendChild(mkBold(get_time_diff(comment.created), new Date(comment.created * 1000).toUTCString()));
+    info.appendChild(document.createTextNode(' ago by '));
+    if (comment.author.toLowerCase() !== "[deleted]") {
+        info.appendChild(mkCallback(function () {
+            research("user:" + comment.author)
+        }, comment.author, 'Search this user'));
+    } else {
+        info.appendChild(document.createTextNode(comment.author));
+    }
+    info.appendChild(mmd(comment.body));
     right.appendChild(info);
 
     const actions = document.createElement('div');
     actions.setAttribute('class', 'card-action');
-    actions.appendChild(mkLink(`http://reddit.com/comments/${comment.postid}/_/${comment.hexid}`, "permalink"));
+    actions.appendChild(mkLink(`http://reddit.com/comments/${comment.post_id}/_/${comment.hexid}`, "permalink"));
 
-    if (comment.width !== 0 && comment.height !== 0 && comment.size !== 0) {
-        actions.appendChild(mkLink(comment.imageurl,
-            `⛶ ${comment.width}x${comment.height} ${bytes_to_readable(comment.size)}`
+    if (comment.item) {
+        right.appendChild(mkLink(comment.item.url,
+            comment.item.type === 'image'
+                ? `  (⛶ ${comment.item.width}x${comment.item.height} ${bytes_to_readable(comment.item.size)})`
+                : `  (▷ ${comment.item.height}p ${bits_to_readable(comment.item.bitrate)}/s ${get_time(comment.item.duration)} ${bytes_to_readable(comment.item.size)})`
         ));
     }
 
+    card.appendChild(cardItemWrapper);
     card.appendChild(cardContent);
     cardContent.appendChild(contentWrapper);
+    cardItemWrapper.appendChild(cardItem);
     contentWrapper.appendChild(left);
     contentWrapper.appendChild(right);
     card.appendChild(actions);
@@ -481,4 +555,49 @@ function mkGallery(images, rows = 3) {
     }
 
     return gallery;
+}
+
+function makeSlideShow(videoId, duration, height) {
+
+    const el = document.createElement('div');
+    el.setAttribute("class", "slideshow");
+
+    get_video_thumbs(videoId, function (images) {
+
+        for (let i = 0; i < images.length; i++) {
+            const img = document.createElement("img");
+            if (i === 0) {
+                img.setAttribute("class", "gallery-item showcase-img");
+            } else {
+                img.setAttribute("class", "gallery-item");
+            }
+            img.setAttribute("src", images[i]);
+            el.appendChild(img);
+        }
+
+        let imageCounter = images.length;
+        let timer = undefined
+
+        el.onmouseenter = function () {
+            timer = window.setInterval(function () {
+                const images = el.querySelectorAll(".gallery-item");
+                let newIndex = imageCounter % images.length;
+                let lastIndex = 0;
+                newIndex === 0 ? lastIndex = images.length - 1 : lastIndex = newIndex - 1;
+                images[newIndex].classList.add("showcase-img");
+                images[lastIndex].classList.remove("showcase-img");
+
+                imageCounter += 1;
+            }, duration / images.length * 800)
+        }
+
+        el.onmouseleave = function () {
+            if (timer) {
+                window.clearInterval(timer)
+                timer = undefined
+            }
+        }
+    })
+
+    return el;
 }

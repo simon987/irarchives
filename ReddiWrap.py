@@ -18,7 +18,7 @@ TODO:
 import json
 from pprint import pprint
 
-from Httpy import Httpy  # Class for communicating with the web server.
+from Httpy import Httpy
 
 
 class Post(object):

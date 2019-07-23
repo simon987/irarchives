@@ -13,6 +13,11 @@ Realtime dhash demo. The hash (on the right) is stored as a 144-bit
 integer. We can compute the similarity of two images by counting the number
  of matching bits of their hashes.
 
+![demo](demo.gif)
+Realtime dhash demo. The hash (on the right) is stored as 144-bit 
+integer. We can compute the similarity of two images by counting the number
+ of matching bits of their hashes.
+
 Overview
 --------
 
@@ -29,8 +34,11 @@ Tested with Python 3.7.2.
 
 Dependencies on Debian: `apt install libgmp-dev libmpfr-dev libmpc-dev`
 
-This project relies on [Architeuthis](https://github.com/simon987/Architeuthis) MITM proxy to respect rate-limits
+This project relies on [Architeuthis MITM proxy](https://github.com/simon987/Architeuthis) to respect rate-limits
 and handle http errors. 
+
+[Additional C-Language functions](https://github.com/simon987/pg_hamming) 
+for PostgreSQL need to be installed for almost all queries.
 
 The search interface can be configured to use *redis* for caching 
 (see [common.py](common.py)).

@@ -1,13 +1,14 @@
 import base64
 import json
 
+import binascii
 from flask import Blueprint, Response, request
 
 from DB import DB
 from common import DBFILE
 from common import logger
 from img_util import get_hash, image_from_buffer
-from search import MAX_DISTANCE
+from search import MAX_DISTANCE, SearchResults
 
 upload_page = Blueprint('upload', __name__, template_folder='templates')
 db = DB(DBFILE)
@@ -34,11 +35,9 @@ def upload():
         image_hash = get_hash(image)
 
         images = db.get_similar_images(image_hash, distance)
-        comments, posts = db.build_result_for_images(images)
+        results = SearchResults(db.build_result_for_images(images),
+                                url="hash:" + binascii.hexlify(image_hash).decode('ascii')
+                                )
 
-        return Response(json.dumps({
-            'posts': posts,
-            'comments': comments,
-            'url': "hash:" + str(image_hash)
-        }), mimetype="application/json")
+        return Response(results.json(), mimetype="application/json")
 

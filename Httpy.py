@@ -42,42 +42,20 @@ class Httpy:
 
     def download(self, url):
         """ Downloads file from URL to save_as path. """
-        try:
-            body = BytesIO()
-            self.curl.setopt(self.curl.WRITEFUNCTION, body.write)
-            self.curl.setopt(self.curl.URL, url)
-            self.curl.perform()
-            if self.curl.getinfo(self.curl.HTTP_CODE) != 200:
-                raise Exception("HTTP" + str(self.curl.getinfo(self.curl.HTTP_CODE)))
-
-            r = body.getvalue()
-            body.close()
-            return r
-        except Exception as e:
-            raise Exception(str(e) + " HTTP" + str(self.curl.getinfo(self.curl.HTTP_CODE)))
-
-    def between(self, source, start, finish):
-        """
-            Useful when parsing responses from web servers.
-
-            Looks through a given source string for all items between two other strings,
-            returns the list of items (or empty list if none are found).
-
-            Example:
-                test = 'hello >30< test >20< asdf >>10<< sadf>'
-                print between(test, '>', '<')
-
-            would print the list:
-                ['30', '20', '>10']
-        """
-        result = []
-        i = source.find(start)
-        j = source.find(finish, i + len(start) + 1)
-
-        while i >= 0 and j >= 0:
-            i = i + len(start)
-            result.append(source[i:j])
-            i = source.find(start, j + len(finish))
-            j = source.find(finish, i + len(start) + 1)
-
-        return result
+        retries = 3
+        while retries:
+            try:
+                body = BytesIO()
+                self.curl.setopt(self.curl.WRITEFUNCTION, body.write)
+                self.curl.setopt(self.curl.URL, url)
+                self.curl.perform()
+                if self.curl.getinfo(self.curl.HTTP_CODE) != 200:
+                    raise Exception("HTTP" + str(self.curl.getinfo(self.curl.HTTP_CODE)))
+                r = body.getvalue()
+                body.close()
+                return r
+            except Exception as e:
+                if str(e).find("transfer closed") > 0 and retries:
+                    retries -= 1
+                    continue
+                raise Exception(str(e) + " HTTP" + str(self.curl.getinfo(self.curl.HTTP_CODE)))

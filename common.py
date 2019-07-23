@@ -6,7 +6,12 @@ from flask_caching import Cache
 
 HTTP_PROXY = "http://localhost:5050"
 DBFILE = "dbname=ir user=ir password=ir"
-USE_REDIS = True
+USE_REDIS = False
+SFW = True
+# SFW = False
+TN_SIZE = 500
+
+SQL_DEBUG = False
 
 if USE_REDIS:
     cache = Cache(config={
@@ -17,9 +22,8 @@ if USE_REDIS:
     })
 else:
     cache = Cache(config={
-        "CACHE_TYPE": "simple"
+        "CACHE_TYPE": "null"
     })
-
 
 logger = logging.getLogger("default")
 logger.setLevel(logging.DEBUG)

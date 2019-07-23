@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{NSFW} Reddit reverse image search</title>
+    <title>{SFW} Reddit reverse image search</title>
     <meta name="description"
-          content="Search NSFW subreddits by image. Easily find the source for some photos (and more) by finding the relevant posts on reddit.">
+          content="Search SFW subreddits by image. Easily find the source for some photos (and more) by finding the relevant posts on reddit.">
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
     <link rel="stylesheet" href="../static/materialize.css">
     <link rel="stylesheet" type="text/css" href="../static/main.css"/>
@@ -17,9 +17,9 @@
 <a class="header nsfw" href="/">
     <h2>
         <span style="white-space: nowrap;">
-            <span class="nsfw_bracket" id="nsfw_bracket_left">{</span>
-            <span class="nsfw_red">NSFW</span>
-            <span class="nsfw_bracket" id="nsfw_bracket_right">}</span>
+            <span class="sfw_bracket" id="nsfw_bracket_left">{</span>
+            <span class="sfw_blue">SFW</span>
+            <span class="sfw_bracket" id="nsfw_bracket_right">}</span>
         </span>
         <span class="nsfw_white">reddit&nbsp;reverse image&nbsp;search</span>
     </h2>
@@ -42,14 +42,11 @@
     {# Search results #}
     <div id="output"></div>
 
-    {# Search results #}
-    <div id="output"></div>
-
     {# menu #}
     <div class="card">
         <div class="card-content">
 
-            <ul id="rri_menu" class="tabs">
+            <ul id="rri_menu" class="tabs swf_tabs">
                 <li class="tab col s3"><a href="#rri_menu_stats">Statistics</a></li>
                 <li class="tab col s3"><a href="#rri_menu_subs">Subreddits</a></li>
                 <li class="tab col s3"><a href="#rri_menu_about">About</a></li>
@@ -125,7 +122,7 @@
     </div>
 </main>
 
-<footer class="page-footer">
+<footer class="page-footer sfw_footer">
     <div class="container">
         <div class="row">
             Suggestions or comments? Contact me by email <a href="mailto:me@simon987.net">here</a>

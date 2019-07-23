@@ -4,10 +4,11 @@ from io import BytesIO, StringIO
 
 import sys
 from PIL import Image
-from gallery_dl import job
+from gallery_dl import job, config
 from imagehash import dhash
 
-from common import logger
+from common import logger, HTTP_PROXY, TN_SIZE
+from util import thumb_path
 
 
 def get_image_urls(url):
@@ -18,7 +19,11 @@ def get_image_urls(url):
     try:
         sys.stdout = StringIO()
 
-        # TODO: Currently not using proxy, do not use with scan.py !!!
+        config.set(["proxy"], HTTP_PROXY)
+        config.set(["verify"], False)
+        config.set(["retries"], 1)
+        config.set(["timeout"], 600)
+
         job.UrlJob(url).run()
 
         for image_url in sys.stdout.getvalue().split('\n'):
@@ -56,15 +61,9 @@ def create_thumb(im, num):
     # Convert to RGB if not already
     if im.mode != "RGB":
         im = im.convert("RGB")
-    im.thumbnail((500, 500), Image.ANTIALIAS)
+    im.thumbnail((TN_SIZE, TN_SIZE), Image.ANTIALIAS)
 
     im.save(os.path.join(dirpath, str(num) + ".jpg"), 'JPEG')
-
-
-def thumb_path(thumb_id):
-    digit1 = str(thumb_id)[0]
-    digit2 = str(thumb_id)[1] if thumb_id >= 10 else "0"
-    return os.path.join('static/thumbs/', digit1, digit2)
 
 
 def get_sha1(image_buffer):
@@ -72,4 +71,5 @@ def get_sha1(image_buffer):
 
 
 def get_hash(im):
-    return sum(1 << i for i, b in enumerate(dhash(im, hash_size=12).hash.flatten()) if b)
+    return sum(1 << i for i, b in enumerate(dhash(im, hash_size=12).hash.flatten()) if b)\
+        .to_bytes(18, "big")
