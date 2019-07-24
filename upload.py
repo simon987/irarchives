@@ -35,9 +35,12 @@ def upload():
         image_hash = get_hash(image)
 
         images = db.get_similar_images(image_hash, distance)
-        results = SearchResults(db.build_result_for_images(images),
-                                url="hash:" + binascii.hexlify(image_hash).decode('ascii')
-                                )
+        if images:
+            results = SearchResults(db.build_result_for_images(images),
+                                    url="hash:" + binascii.hexlify(image_hash).decode('ascii')
+                                    )
+        else:
+            results = SearchResults([])
 
         return Response(results.json(), mimetype="application/json")
 
