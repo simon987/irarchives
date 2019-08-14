@@ -399,6 +399,13 @@ class DB:
                  upvotes, downvotes, score, created_utc, is_self, over_18))
         return None if not res else res[0][0]
 
+    def get_postid_from_hexid(self, hexid):
+        with self.get_conn() as conn:
+            res = conn.query(
+                "SELECT id FROM posts WHERE hexid=%s",
+                (hexid, ))
+        return None if not res else res[0]
+
     # Search
 
     def build_result_for_images(self, images):

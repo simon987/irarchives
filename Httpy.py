@@ -3,7 +3,7 @@ from io import BytesIO
 from pycurl import Curl
 from urllib3 import disable_warnings
 
-from common import HTTP_PROXY
+from common import HTTP_PROXY, logger
 
 disable_warnings()
 

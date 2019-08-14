@@ -2,9 +2,12 @@ Pillow
 requests
 flask
 gallery-dl
+youtube-dl
 urllib3
 numpy
 imagehash
 gmpy2
 flask-caching
 redis
+psycopg2
+pika

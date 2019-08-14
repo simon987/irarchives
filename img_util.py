@@ -66,8 +66,8 @@ def create_thumb(im, num):
     im.save(os.path.join(dirpath, str(num) + ".jpg"), 'JPEG')
 
 
-def get_sha1(image_buffer):
-    return hashlib.sha1(image_buffer).hexdigest()
+def get_sha1(buffer):
+    return hashlib.sha1(buffer).hexdigest()
 
 
 def get_hash(im):
