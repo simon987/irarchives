@@ -39,14 +39,6 @@ def load_list(filename):
 
 def should_parse_link(url):
 
-    if SUB_RE.match(url):
-        logger.debug('Skipping url %s: Subreddit' % url)
-        return False
-
-    if USER_RE.match(url):
-        logger.debug('Skipping url %s: User' % url)
-        return False
-
     if "message/compose" in url:
         logger.debug('Skipping url %s: PM' % url)
         return False
@@ -58,10 +50,6 @@ def should_parse_link(url):
     if "reddit.com/search?q=" in url or "github.com" in url or\
             "wikipedia.org" in url or "addons.mozilla.org" in url:
         logger.debug('Skipping url %s: Misc' % url)
-        return False
-
-    # TODO: temporary
-    if "instagram.com" in url:
         return False
 
     return True

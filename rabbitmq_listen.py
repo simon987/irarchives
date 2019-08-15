@@ -181,23 +181,18 @@ class Consumer:
             logger.debug('Ignoring post (already indexed)')
             return False
 
-        if post.selftext != '':
-            urls = get_links_from_body(post.selftext)
-            for url in urls:
-                self.parse_url(url, web, postid=postid_db)
-        else:
-            self.parse_url(post.url, web, postid=postid_db)
+        for url in post.urls:
+            self.parse_url(url, web, postid=postid_db)
 
     def parse_comment(self, comment, web):
 
-        urls = get_links_from_body(comment.body)
-        if urls:
+        if comment.urls:
             postid = self.db.get_postid_from_hexid(comment.link_id[3:])
             if not postid:
                 return
             comid_db = self.db.insert_comment(postid, comment.id, comment.author,
                                               comment.body, comment.ups, comment.downs, comment.created_utc)
-            for url in urls:
+            for url in comment.urls:
                 self.parse_url(url, web, postid=postid, commentid=comid_db)
 
     def parse_url(self, url, web, postid=None, commentid=None):
