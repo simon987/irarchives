@@ -1,9 +1,10 @@
 import binascii
 import json
 import os
-import subprocess
 import sys
+from queue import Queue
 from subprocess import getstatusoutput
+from threading import Thread
 
 import pika
 from youtube_dl import YoutubeDL
@@ -130,6 +131,7 @@ class Consumer:
         self._rabbitmq_channel = self._rabbitmq.channel()
         self._rabbitmq_channel.exchange_declare(exchange='reddit', exchange_type='topic')
         self._rabbitmq_queue = self._rabbitmq_channel.queue_declare('', exclusive=True)
+        self._q = Queue()
 
     def run(self):
         for sub in load_list("subs.txt"):
@@ -138,19 +140,37 @@ class Consumer:
                                               routing_key="*.%s" % sub)
 
         def msg_callback(ch, method, properties, body):
-            j = json.loads(body)
-
-            if "title" in j:
-                self.parse_post(Post(*(j[k] for k in POST_FIELDS)))
-            else:
-                self.parse_comment(Comment(*(j[k] for k in COMMENT_FIELDS)))
+            self._q.put(body)
 
         self._rabbitmq_channel.basic_consume(queue=self._rabbitmq_queue.method.queue,
                                              on_message_callback=msg_callback,
                                              auto_ack=True)
+        for _ in range(0, 30):
+            t = Thread(target=self._message_callback_worker)
+            t.start()
         self._rabbitmq_channel.start_consuming()
 
-    def parse_post(self, post):
+    def _message_callback(self, body, web):
+        j = json.loads(body)
+
+        if "title" in j:
+            self.parse_post(Post(*(j[k] for k in POST_FIELDS)), web)
+        else:
+            self.parse_comment(Comment(*(j[k] for k in COMMENT_FIELDS)), web)
+
+    def _message_callback_worker(self):
+        logger.info("Started message callback worker")
+        web = Httpy()
+        while True:
+            try:
+                body = self._q.get()
+                self._message_callback(body, web)
+            except Exception as e:
+                logger.error(e)
+            finally:
+                self._q.task_done()
+
+    def parse_post(self, post, web):
         # Add post to database
         postid_db = self.db.insert_post(post.id, post.title, post.url, post.selftext,
                                         post.author, post.permalink, post.subreddit, post.num_comments,
@@ -164,11 +184,11 @@ class Consumer:
         if post.selftext != '':
             urls = get_links_from_body(post.selftext)
             for url in urls:
-                self.parse_url(url, postid=postid_db)
+                self.parse_url(url, web, postid=postid_db)
         else:
-            self.parse_url(post.url, postid=postid_db)
+            self.parse_url(post.url, web, postid=postid_db)
 
-    def parse_comment(self, comment):
+    def parse_comment(self, comment, web):
 
         urls = get_links_from_body(comment.body)
         if urls:
@@ -178,17 +198,17 @@ class Consumer:
             comid_db = self.db.insert_comment(postid, comment.id, comment.author,
                                               comment.body, comment.ups, comment.downs, comment.created_utc)
             for url in urls:
-                self.parse_url(url, postid=postid, commentid=comid_db)
+                self.parse_url(url, web, postid=postid, commentid=comid_db)
 
-    def parse_url(self, url, postid=None, commentid=None):
+    def parse_url(self, url, web, postid=None, commentid=None):
         """ Gets image hash(es) from URL, populates database """
 
         if is_image_direct_link(url):
-            self.parse_image(url, postid=postid, commentid=commentid, albumid=None)
+            self.parse_image(url, web, postid=postid, commentid=commentid, albumid=None)
             return True
 
         if is_video(url):
-            self.parse_video(url, postid=postid, commentid=commentid)
+            self.parse_video(url, web, postid=postid, commentid=commentid)
             return True
 
         if "v.redd.it" in url:
@@ -197,7 +217,7 @@ class Consumer:
             info = ytdl.extract_info(url, download=False, process=False)
 
             best = max(info["formats"], key=lambda x: x["width"] if "width" in x and x["width"] else 0)
-            self.parse_video(best["url"], postid=postid, commentid=commentid)
+            self.parse_video(best["url"], web, postid=postid, commentid=commentid)
             return
 
         if not should_parse_link(url):
@@ -212,12 +232,12 @@ class Consumer:
 
         for image_url in image_urls:
             if is_image_direct_link(image_url):
-                self.parse_image(image_url, postid, commentid, albumid)
+                self.parse_image(image_url, web, postid=postid, commentid=commentid, albumid=albumid)
             elif is_video(image_url):
-                self.parse_video(image_url, postid, commentid)
+                self.parse_video(image_url, web, postid=postid, commentid=commentid)
         return True
 
-    def parse_image(self, url, postid=None, commentid=None, albumid=None):
+    def parse_image(self, url, web, postid=None, commentid=None, albumid=None):
         existing_by_url = self.db.get_image_from_url(url)
         if existing_by_url:
             self.db.insert_imageurl(url=url, imageid=existing_by_url, postid=postid, commentid=commentid,
@@ -225,7 +245,7 @@ class Consumer:
             return
 
         try:
-            image_buffer = self.web.download(url)
+            image_buffer = web.download(url)
 
             sha1 = get_sha1(image_buffer)
             existing_by_sha1 = self.db.get_image_from_sha1(sha1)
@@ -253,14 +273,14 @@ class Consumer:
         except Exception as e:
             logger.error(e)
 
-    def parse_video(self, url, postid=None, commentid=None):
+    def parse_video(self, url, web, postid=None, commentid=None):
         existing_by_url = self.db.get_video_from_url(url)
         if existing_by_url:
             self.db.insert_videourl(url=url, video_id=existing_by_url, postid=postid, commentid=commentid)
             return
 
         try:
-            video_buffer = self.web.download(url)
+            video_buffer = web.download(url)
 
             if not video_buffer:
                 raise Exception("Download failed %s" % url)
