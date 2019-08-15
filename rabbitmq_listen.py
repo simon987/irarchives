@@ -141,8 +141,7 @@ class Consumer:
             j = json.loads(body)
 
             if "title" in j:
-                pass
-                # self.parse_post(Post(*(j[k] for k in POST_FIELDS)))
+                self.parse_post(Post(*(j[k] for k in POST_FIELDS)))
             else:
                 self.parse_comment(Comment(*(j[k] for k in COMMENT_FIELDS)))
 
