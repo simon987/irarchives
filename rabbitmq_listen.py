@@ -141,7 +141,8 @@ class Consumer:
             j = json.loads(body)
 
             if "title" in j:
-                self.parse_post(Post(*(j[k] for k in POST_FIELDS)))
+                pass
+                # self.parse_post(Post(*(j[k] for k in POST_FIELDS)))
             else:
                 self.parse_comment(Comment(*(j[k] for k in COMMENT_FIELDS)))
 
@@ -172,7 +173,7 @@ class Consumer:
 
         urls = get_links_from_body(comment.body)
         if urls:
-            postid = self.db.get_postid_from_hexid(comment.link_id)
+            postid = self.db.get_postid_from_hexid(comment.link_id[3:])
             if not postid:
                 return
             comid_db = self.db.insert_comment(postid, comment.id, comment.author,
