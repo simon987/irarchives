@@ -239,7 +239,7 @@ class DB:
         with self.get_conn() as conn:
             res = conn.query("SELECT i.id from imageurls "
                              "INNER JOIN images i on i.id = imageurls.imageid "
-                             "WHERE url = %s", (clean_url(url),))
+                             "WHERE clean_url = %s", (clean_url(url),))
 
         return None if not res else res[0][0]
 
@@ -247,7 +247,7 @@ class DB:
         with self.get_conn() as conn:
             res = conn.query("SELECT i.hash from imageurls "
                              "INNER JOIN images i on i.id = imageurls.imageid "
-                             "WHERE url = %s", (url,))
+                             "WHERE clean_url = %s", (url,))
 
         return None if not res else res[0][0]
 
