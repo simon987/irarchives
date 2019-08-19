@@ -5,35 +5,34 @@ from io import BytesIO, StringIO
 import sys
 from PIL import Image
 from gallery_dl import job, config
+from gallery_dl.job import UrlJob
 from imagehash import dhash
 
 from common import logger, HTTP_PROXY, TN_SIZE
 from util import thumb_path
 
 
-def get_image_urls(url):
-    result = set()
+class ListUrlJob(UrlJob):
+    def __init__(self, url):
+        super().__init__(url)
+        self.list = []
 
+    def handle_url(self, url, _):
+        self.list.append(url)
+
+
+def get_image_urls(url):
     logger.debug('Getting urls from %s ...' % (url,))
 
-    try:
-        sys.stdout = StringIO()
+    config.set(["proxy"], HTTP_PROXY)
+    config.set(["verify"], False)
+    config.set(["retries"], 1)
+    config.set(["timeout"], 600)
 
-        config.set(["proxy"], HTTP_PROXY)
-        config.set(["verify"], False)
-        config.set(["retries"], 1)
-        config.set(["timeout"], 600)
+    j = ListUrlJob(url)
+    j.run()
 
-        job.UrlJob(url).run()
-
-        for image_url in sys.stdout.getvalue().split('\n'):
-            if image_url.strip() != "":
-                result.add(image_url)
-        sys.stdout.close()
-    except:
-        pass
-    finally:
-        sys.stdout = sys.__stdout__
+    result = set(j.list)
 
     logger.debug('Got %d urls from %s' % (len(result), url))
 
