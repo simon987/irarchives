@@ -129,8 +129,10 @@ def flatten_video_info(info):
 
             if "duration" in stream:
                 result["duration"] = int(float(stream["duration"]))
-            else:
+            elif "duration" in info["format"]:
                 result["duration"] = int(float(info["format"]["duration"]))
+            else:
+                result["duration"] = 0
             break
 
     result["format"] = info["format"]["format_long_name"]
