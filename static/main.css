@@ -224,15 +224,15 @@ footer a {
     background-color: #1E88E5;
 }
 
-.swf_tabs.tabs .tab a {
+.sfw_tabs.tabs .tab a {
     color: rgba(30, 136, 229, 0.7);
 }
 
-.swf_tabs.tabs .tab a:focus, .swf_tabs.tabs  .tab a:focus:active {
+.sfw_tabs.tabs .tab a:focus, .sfw_tabs.tabs  .tab a:focus:active {
     background-color: rgba(30, 136, 229, 0.2);
 }
 
-.swf_tabs.tabs .indicator {
+.sfw_tabs.tabs .indicator {
     background-color: #1E88E5;
 }
 
@@ -263,4 +263,26 @@ code {
 
 .push {
     margin-bottom: auto;
+}
+
+.help {
+    font-size: 25px;
+    font-weight: bold;
+}
+
+@media screen and (max-width: 400px) {
+    .btn-col {
+        display: none;
+    }
+    .col {
+        width: 100%;
+    }
+}
+
+code {
+    color: deeppink;
+}
+
+.help-link {
+    margin-left: 1rem;
 }

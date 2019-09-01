@@ -2,28 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{NSFW} Reddit reverse image search</title>
-    <meta name="description"
-          content="Search NSFW subreddits by image. Easily find the source for some photos (and more) by finding the relevant posts on reddit.">
+    <title>{{ title }}</title>
+    <meta name="description" content="{{ description }}">
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
-    <link rel="stylesheet" href="../static/materialize.css">
-    <link rel="stylesheet" type="text/css" href="../static/main.css"/>
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <meta name=referrer content=no-referrer>
+
+    <link rel="stylesheet" href="../static/materialize.css">
+    <link rel="stylesheet" type="text/css" href="../static/main.css?v=10"/>
 </head>
 <body>
 
 {#Header#}
-<a class="header nsfw" href="/">
-    <h2>
-        <span style="white-space: nowrap;">
-            <span class="nsfw_bracket" id="nsfw_bracket_left">{</span>
-            <span class="nsfw_red">NSFW</span>
-            <span class="nsfw_bracket" id="nsfw_bracket_right">}</span>
-        </span>
-        <span class="nsfw_white">reddit&nbsp;reverse image&nbsp;search</span>
-    </h2>
-</a>
+{% block header %}{% endblock %}
 
 <main class="container">
 
@@ -33,7 +24,7 @@
             <form onsubmit="return query()">
                 <div class="input-field col l8">
                     <input id="search" type="search" required>
-                    <label for="search">Search</label>
+                    <label for="search">Query</label>
                 </div>
             </form>
         </div>
@@ -49,7 +40,7 @@
     <div class="card">
         <div class="card-content">
 
-            <ul id="rri_menu" class="tabs">
+            <ul id="rri_menu" class="tabs {{ tabs_style }}">
                 <li class="tab col s3"><a href="#rri_menu_stats">Statistics</a></li>
                 <li class="tab col s3"><a href="#rri_menu_subs">Subreddits</a></li>
                 <li class="tab col s3"><a href="#rri_menu_about">About</a></li>
@@ -101,15 +92,7 @@
                 </div>
                 <div class="row">
                     <div class="col s3"><span class="right bold">What?</span></div>
-                    <div class="col s9">Shows reddit posts, comments, and albums that contain an image</div>
-                </div>
-                <div class="row">
-                    <div class="col s3"><span class="right bold">When?</span></div>
-                    <div class="col s9">Constantly scrapes images from day-old posts</div>
-                </div>
-                <div class="row">
-                    <div class="col s3"><span class="right bold">Where?</span></div>
-                    <div class="col s9">From the weekly top 1,000 posts in the listed subreddits</div>
+                    <div class="col s9">Reverse image & video reverse search</div>
                 </div>
                 <div class="row">
                     <div class="col s3"><span class="right bold">Why?</span></div>
@@ -117,15 +100,15 @@
                 </div>
                 <div class="row">
                     <div class="col s3"><span class="right bold">How?</span></div>
-                    <div class="col s9">Image comparison & python. see the source code on <a
-                            href="https://github.com/simon987/irarchives">Github</a></div>
+                    <div class="col s9">Image comparison, python and C. see the source code on
+                        <a href="https://github.com/simon987/irarchives">Github</a></div>
                 </div>
             </div>
         </div>
     </div>
 </main>
 
-<footer class="page-footer">
+<footer class="page-footer {{ footer_style }}">
     <div class="container">
         <div class="row">
             Suggestions or comments? Contact me by email <a href="mailto:me@simon987.net">here</a>
@@ -137,9 +120,49 @@
     </div>
 </footer>
 
+<div class="fixed-action-btn">
+    <a class="btn-floating btn-large waves-effect waves-light modal-trigger help {{ help_style }}" href="#help">
+        <span class="help">?</span>
+    </a>
+</div>
+
+<!-- Help -->
+<div id="help" class="modal">
+    <div class="modal-content">
+        <h4>Help</h4>
+        <h5>How to use</h5>
+        <p>To search by url, can query <code>image:http://exemple.com/image.jpg</code> or
+            <code>video:http://exemple.com/video.mp4</code>.
+        </p>
+        <p>If you specify an url without the <i>image:</i> or <i>video:</i> prefix, it will be
+            considered as an image url.</p>
+        <p><i>(Optional)</i> You can specify the maximum <b>distance</b> with <code>d:D</code> where <b>D</b>
+        is a number between 0 and 30. A distance of 0 is a near-perfect match, and higher values
+        allow more fuzzy matches.</p>
+        <p><i>(Optional)</i> You can specify the minimum <b>frame matches</b> with <code>frames:F</code> where <b>F</b>
+            is a number between 1 and 30. Only videos that have <i>at least</i> <b>F</b> frames within the specified
+            distance are returned. The default value is 10.
+
+        <p><i>Alternatively,</i> you can paste an image into the search bar.</p>
+
+        <h5>Examples</h5>
+        <p><code>video:http://exemple.com/video.mp4 d:15 frames:20</code> will return all videos that have:</p>
+        <ul class="browser-default">
+            <li>At least 20 frames in common</li>
+            <li>Those 20 frames must be within 15 units of distance</li>
+        </ul>
+
+        <p><code>http://exemple.com/image.jpg</code> will return all images that are within 10 units of distance</p>
+
+        <h5>Notes</h5>
+        <p>Make sure to user the direct link to the image/video, use <code>https://i.imgur.com/xxxxxxx.jpg</code>
+            rather than <code>https://imgur.com/xxxxxx</code></p>
+    </div>
+</div>
+
 </body>
 
 <script src="../static/materialize.min.js"></script>
-<script src="../static/index.js"></script>
+<script src="../static/index.js?v=10"></script>
 
 </html>

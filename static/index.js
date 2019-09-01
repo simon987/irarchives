@@ -1,3 +1,5 @@
+let helpModal;
+
 //Markdown to html https://github.com/p01/mmd.js
 function mmd(s) {
     let h = '';
@@ -68,8 +70,10 @@ function uploadBlob(blob) {
 
 
 window.onload = function () {
+    M.Modal.init(document.querySelectorAll(".modal"), {});
     M.Tabs.init(document.getElementById("rri_menu"), {});
     M.Tabs.init(document.getElementById("search-menu"), {});
+    helpModal = M.Modal.getInstance(document.getElementById("help"));
     get_subreddits();
     get_status();
     gebi("search").addEventListener("paste", function (e) {
@@ -191,6 +195,8 @@ function query() {
             if (request.status === 200) {
                 pl.remove();
                 handleSearchResponse(request.responseText)
+            } else if (request.status === 504) {
+                results_el.appendChild(mkErrorMsg(`Query timed out, try again in a few minutes.`));
             }
         }
     };
@@ -205,7 +211,7 @@ function handleSearchResponse(responseText) {
     const resp = JSON.parse(responseText);
 
     if (resp['error'] != null) {
-        results_el.appendChild(mkHeader(`Error: ${resp['error']}`));
+        results_el.appendChild(mkErrorMsg(`Error: ${resp['error']}`));
         return;
     }
 
@@ -216,7 +222,7 @@ function handleSearchResponse(responseText) {
     }
 
     if (resp.result_count === 0) {
-        results_el.appendChild(mkHeader('No results'));
+        results_el.appendChild(mkErrorMsg('No results'));
         return;
     }
 
@@ -305,6 +311,20 @@ function mkHeader(text) {
     const el = document.createElement('h5');
     el.setAttribute('class', 'white-text');
     el.appendChild(document.createTextNode(text));
+    return el;
+}
+
+function mkErrorMsg(text) {
+    const el = document.createElement('h5');
+    el.setAttribute('class', 'white-text');
+    el.appendChild(document.createTextNode(text));
+
+    const helpLink = document.createElement("a")
+    helpLink.setAttribute("class", "modal-trigger help-link")
+    helpLink.setAttribute("href", "#help")
+    helpLink.appendChild(document.createTextNode("(Help!)"))
+    el.appendChild(helpLink);
+
     return el;
 }
 

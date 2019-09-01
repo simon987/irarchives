@@ -14,8 +14,7 @@ from Httpy import Httpy
 from common import logger, DBFILE
 from img_util import get_image_urls, create_thumb, image_from_buffer, get_sha1, get_hash, thumb_path
 from reddit import Post, Comment, COMMENT_FIELDS, POST_FIELDS
-from util import get_links_from_body, is_image_direct_link, clean_url, \
-    should_parse_link, is_video, load_list
+from util import is_image_direct_link, should_parse_link, is_video, load_list
 from video_util import info_from_video_buffer, flatten_video_info
 
 SCHEMA = {
@@ -109,17 +108,6 @@ SCHEMA = {
         'FOREIGN KEY(albumid)   REFERENCES albums(id)',
 
 }
-
-
-def exit_if_already_started():
-    (status, output) = getstatusoutput('ps aux')
-    running_processes = 0
-    for line in output.split('\n'):
-        if 'python' in line and 'scan.py' in line and '/bin/sh -c' not in line:
-            running_processes += 1
-    if running_processes > 1:
-        logger.error("process is already running, exiting")
-        sys.exit(0)
 
 
 class Consumer:

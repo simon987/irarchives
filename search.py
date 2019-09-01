@@ -15,8 +15,7 @@ from video_util import info_from_video_buffer
 search_page = Blueprint('search', __name__, template_folder='templates')
 
 AlphaNum = re.compile(r'[\W_]+')
-# MAX_DISTANCE = 30
-MAX_DISTANCE = 3200
+MAX_DISTANCE = 30
 
 MAX_FRAME_COUNT = 30
 DEFAULT_FRAME_COUNT = 10
@@ -64,7 +63,7 @@ def search():
 
     if "f" in request.args:
         try:
-            frame_count = min(int(request.args["f"]), MAX_FRAME_COUNT)
+            frame_count = max(min(int(request.args["f"]), MAX_FRAME_COUNT), 1)
         except:
             frame_count = DEFAULT_FRAME_COUNT
     else:
@@ -103,7 +102,7 @@ def search_vid_url(query, distance, frame_count):
             web = Httpy()
             video_buffer = web.download(url=query)
             if not video_buffer:
-                raise Exception('unable to download image at %s' % query)
+                raise Exception('unable to download video at %s' % query)
 
             try:
                 frames, info = info_from_video_buffer(video_buffer, os.path.splitext(query)[1][1:])
@@ -135,8 +134,9 @@ def search_img_url(query, distance):
         if not hash:
             # Download image
             web = Httpy()
-            image_buffer = web.download(url=query)
-            if not image_buffer:
+            try:
+                image_buffer = web.download(url=query)
+            except:
                 raise Exception('unable to download image at %s' % query)
 
             try:
