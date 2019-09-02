@@ -38,8 +38,7 @@ main {
 }
 
 .callback_btn {
-    padding: 0;
-    color: #039be5;
+    cursor: pointer;
 }
 
 .progress {

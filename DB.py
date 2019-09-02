@@ -588,7 +588,7 @@ class DB:
     def get_images_from_album_url(self, album_url):
         with self.get_conn() as conn:
             res = conn.query(
-                "SELECT i.id, u.url from albums "
+                "SELECT i.id, u.url, i.width, i.height from albums "
                 "INNER JOIN imageurls u on albums.id = u.albumid "
                 "INNER JOIN images i on u.imageid = i.id WHERE albums.url = %s",
                 (album_url,)

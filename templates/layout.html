@@ -9,7 +9,7 @@
     <meta name=referrer content=no-referrer>
 
     <link rel="stylesheet" href="../static/materialize.css">
-    <link rel="stylesheet" type="text/css" href="../static/main.css?v=10"/>
+    <link rel="stylesheet" type="text/css" href="../static/main.css?v=11"/>
 </head>
 <body>
 
@@ -131,8 +131,9 @@
     <div class="modal-content">
         <h4>Help</h4>
         <h5>How to use</h5>
-        <p>To search by url, can query <code>image:http://exemple.com/image.jpg</code> or
-            <code>video:http://exemple.com/video.mp4</code>.
+        <p><b>Search by url</b></p>
+        <p>To search by url, can query <code>image:http://example.com/image.jpg</code> or
+            <code>video:http://example.com/video.mp4</code>.
         </p>
         <p>If you specify an url without the <i>image:</i> or <i>video:</i> prefix, it will be
             considered as an image url.</p>
@@ -145,24 +146,28 @@
 
         <p><i>Alternatively,</i> you can paste an image into the search bar.</p>
 
-        <h5>Examples</h5>
-        <p><code>video:http://exemple.com/video.mp4 d:15 frames:20</code> will return all videos that have:</p>
+        <p>Examples:</p>
+        <p><code>video:http://example.com/video.mp4 d:15 frames:20</code> will return all videos that have:</p>
         <ul class="browser-default">
             <li>At least 20 frames in common</li>
             <li>Those 20 frames must be within 15 units of distance</li>
         </ul>
 
-        <p><code>http://exemple.com/image.jpg</code> will return all images that are within 10 units of distance</p>
+        <p><code>http://example.com/image.jpg</code> will return all images that are within 10 units of distance</p>
+
+        <p><b>Search by username</b></p>
+        <p>You can also search by Reddit user with <code>user:&lt;username&gt;</code></p>
 
         <h5>Notes</h5>
-        <p>Make sure to user the direct link to the image/video, use <code>https://i.imgur.com/xxxxxxx.jpg</code>
-            rather than <code>https://imgur.com/xxxxxx</code></p>
+        <p>Make sure to use the direct link to the image/video, use <code>https://i.imgur.com/xxxxxxx.jpg</code>
+            rather than <code>https://imgur.com/xxxxxx</code>, and use <code>https://giant.gfycat.com/xxxx.mp4</code> rather
+            than <code>https://gfycat.com/xxxx</code></p>
     </div>
 </div>
 
 </body>
 
 <script src="../static/materialize.min.js"></script>
-<script src="../static/index.js?v=10"></script>
+<script src="../static/index.js?v=11"></script>
 
 </html>

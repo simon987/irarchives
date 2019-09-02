@@ -75,17 +75,17 @@ def search():
     if "vid" in request.args:
         return search_vid_url(request.args["vid"], distance, frame_count)
 
-    if "cache" in request.args:
-        return search_cache(request.args["cache"])
+    if "album" in request.args:
+        return search_album(request.args["album"])
 
     if "user" in request.args:
         return search_user(request.args["user"])
 
-    if "reddit" in request.args:
-        return search_reddit(request.args["reddit"])
+    # if "reddit" in request.args:
+    #     return search_reddit(request.args["reddit"])
 
-    if "text" in request.args:
-        return search_text(request.args["text"])
+    # if "text" in request.args:
+    #     return search_text(request.args["text"])
 
     return Response(json.dumps({'error': "Invalid query"}), mimetype="application/json")
 
@@ -167,24 +167,18 @@ def search_reddit(reddit_id):
     }), mimetype="application/json")
 
 
-# TODO update
 def search_user(user):
     """ Returns posts/comments by a reddit user """
     if user.strip() == '' or not is_user_valid(user):
         raise Exception('invalid username')
 
     images = db.get_images_from_author(author=user)
-    comments, posts = db.build_result_for_images(images)
+    results = build_results_for_images(images)
 
-    return Response(json.dumps({
-        'url': 'user:%s' % user,
-        'posts': posts,
-        'comments': comments
-    }), mimetype="application/json")
+    return Response(results.json(), mimetype="application/json")
 
 
-# TODO update (or delete?!)
-def search_cache(url):
+def search_album(url):
     """
         Prints list of images inside of an album
         The images are stored in the database, so 404'd albums
@@ -197,10 +191,12 @@ def search_cache(url):
     images = []
     image_tuples = db.get_images_from_album_url(album_url=url)
 
-    for (urlid, imageurl) in image_tuples:
+    for (urlid, imageurl, width, height) in image_tuples:
         image = {
-            'thumb': path.join(thumb_path(urlid), '%d.jpg' % urlid),
-            'url': imageurl
+            "thumb": path.join(thumb_path(urlid), '%d.jpg' % urlid),
+            "url": imageurl,
+            "width": width,
+            "height": height,
         }
         images.append(image)
 

@@ -181,6 +181,13 @@ function query() {
     if (params["video"]) {
         queryString += '&vid=' + params["video"]
     }
+    if (params["album"]) {
+        queryString += '&album=' + params["album"]
+    }
+    if (params["user"]) {
+        queryString += '&user=' + params["user"]
+    }
+
     //TODO: sha1 etc
 
     const results_el = gebi('output');
@@ -417,10 +424,23 @@ function mkPost(post) {
     contentWrapper.appendChild(left);
     contentWrapper.appendChild(right);
 
-    if (post.item.type === 'image') {
-        card.appendChild(mkExtSearchLinks(post.item.url));
-        contentWrapper.appendChild(mkExtSearchLinksMobile(post.item.url));
+    let links = mkExtSearchLinks(post.item.url);
+    let mobileLinks = mkExtSearchLinksMobile(post.item.url);
+
+    if (post.item.album_url !== null) {
+        links.appendChild(mkCallback(
+            () => research("album:" + post.item.album_url),
+            "album", post.item.album_url,
+        ));
+        mobileLinks.appendChild(mkCallback(
+            () => research("album:" + post.item.album_url),
+            "album", post.item.album_url,
+            true
+        ));
     }
+
+    card.appendChild(links);
+    contentWrapper.appendChild(mobileLinks);
 
     return card;
 }
@@ -467,10 +487,6 @@ function mkComment(comment) {
     info.appendChild(mmd(comment.body));
     right.appendChild(info);
 
-    const actions = document.createElement('div');
-    actions.setAttribute('class', 'card-action');
-    actions.appendChild(mkLink(`http://reddit.com/comments/${comment.post_id}/_/${comment.hexid}`, "permalink"));
-
     if (comment.item) {
         right.appendChild(mkLink(comment.item.url,
             comment.item.type === 'image'
@@ -485,7 +501,24 @@ function mkComment(comment) {
     cardItemWrapper.appendChild(cardItem);
     contentWrapper.appendChild(left);
     contentWrapper.appendChild(right);
-    card.appendChild(actions);
+
+    let links = mkExtSearchLinks(comment.item.url);
+    let mobileLinks = mkExtSearchLinksMobile(comment.item.url);
+
+    if (comment.item.album_url !== null) {
+        links.appendChild(mkCallback(
+            () => research("album:" + comment.item.album_url),
+            "album", comment.item.album_url,
+        ));
+        mobileLinks.appendChild(mkCallback(
+            () => research("album:" + comment.item.album_url),
+            "album", comment.item.album_url,
+            true
+        ));
+    }
+    card.appendChild(links);
+    contentWrapper.appendChild(mobileLinks);
+
     return card;
 }
 
@@ -514,10 +547,14 @@ function mkButton(href, text, target = "_blank") {
     return el
 }
 
-function mkCallback(callback, text, title = '') {
-    const el = document.createElement('button');
+function mkCallback(callback, text, title = '', button) {
+    const el = document.createElement("a");
     el.addEventListener('click', callback);
-    el.setAttribute('class', 'btn-flat callback_btn');
+    if (button) {
+        el.setAttribute('class', 'callback_btn waves-effect waves-light btn');
+    } else {
+        el.setAttribute('class', 'callback_btn');
+    }
     el.setAttribute('title', title);
     el.appendChild(document.createTextNode(text));
     return el
@@ -556,28 +593,49 @@ function mkGallery(images, rows = 3) {
     gallery.setAttribute('class', 'row');
 
     let cols = [];
+    let colHeights = [];
     for (let i = 0; i < rows; i++) {
         let col = document.createElement('div');
         col.setAttribute('class', `col s${12 / rows}`);
         gallery.appendChild(col);
         cols.push(col);
+        colHeights.push(0);
     }
 
-    let col = 0;
-    for (let i in images) {
-        if (col === rows) {
-            col = 0;
+    for (let im in images) {
+
+        let minHeight = Number.MAX_VALUE;
+        let min = 0;
+
+        for (let i = 0; i < cols.length; i++) {
+            if (colHeights[i] < minHeight) {
+                minHeight = colHeights[i];
+                min = i;
+            }
         }
+
         const img = document.createElement('img');
-        img.setAttribute('src', images[i].thumb);
-        cols[col].appendChild(img);
-        col++;
+        img.setAttribute('src', images[im].thumb);
+        cols[min].appendChild(img);
+        colHeights[min] += height(images[im]);
     }
 
     return gallery;
 }
 
-function makeSlideShow(videoId, duration, height) {
+// Quick hack to estimate img height in a col
+function height(im) {
+
+    const TNSIZE = 404.167;
+
+    if (im.width > im.height) {
+        return TNSIZE * (im.width / im.height)
+    } else {
+        return TNSIZE * (im.height / im.width)
+    }
+}
+
+function makeSlideShow(videoId, duration) {
 
     const el = document.createElement('div');
     el.setAttribute("class", "slideshow");

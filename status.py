@@ -15,7 +15,7 @@ def count_subs_txt():
 
 
 @status_page.route("/status")
-@cache.cached(timeout=600)
+@cache.cached(timeout=3600 * 4)
 def status():
     return Response(json.dumps({
         'status': {
