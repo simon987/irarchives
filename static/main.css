@@ -285,3 +285,7 @@ code {
 .help-link {
     margin-left: 1rem;
 }
+
+.card code {
+    white-space: pre-wrap;
+}
