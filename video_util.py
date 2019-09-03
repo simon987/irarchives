@@ -136,6 +136,10 @@ def flatten_video_info(info):
             break
 
     result["format"] = info["format"]["format_long_name"]
+
+    for k in ("width", "height", "bitrate", "frames", "duration"):
+        if k in result:
+            result[k] = min(result[k], 2147483647)
     return result
 
 
