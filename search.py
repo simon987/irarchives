@@ -53,33 +53,38 @@ def build_results_for_images(images):
 def search():
     """ Searches for a single URL, prints results """
 
-    if "d" in request.args:
-        try:
-            distance = min(int(request.args["d"]), MAX_DISTANCE)
-        except:
+    try:
+        if "d" in request.args:
+            try:
+                distance = min(int(request.args["d"]), MAX_DISTANCE)
+            except:
+                distance = 0
+        else:
             distance = 0
-    else:
-        distance = 0
 
-    if "f" in request.args:
-        try:
-            frame_count = max(min(int(request.args["f"]), MAX_FRAME_COUNT), 1)
-        except:
+        if "f" in request.args:
+            try:
+                frame_count = max(min(int(request.args["f"]), MAX_FRAME_COUNT), 1)
+            except:
+                frame_count = DEFAULT_FRAME_COUNT
+        else:
             frame_count = DEFAULT_FRAME_COUNT
-    else:
-        frame_count = DEFAULT_FRAME_COUNT
 
-    if "img" in request.args:
-        return search_img_url(request.args["img"], distance)
+        if "img" in request.args:
+            return search_img_url(request.args["img"], distance)
 
-    if "vid" in request.args:
-        return search_vid_url(request.args["vid"], distance, frame_count)
+        if "vid" in request.args:
+            return search_vid_url(request.args["vid"], distance, frame_count)
 
-    if "album" in request.args:
-        return search_album(request.args["album"])
+        if "album" in request.args:
+            return search_album(request.args["album"])
 
-    if "user" in request.args:
-        return search_user(request.args["user"])
+        if "user" in request.args:
+            return search_user(request.args["user"])
+    except Exception as e:
+        return Response(json.dumps({'error': str(e)}), mimetype="application/json")
+
+    return Response(json.dumps({'error': "Invalid query"}), mimetype="application/json")
 
     # if "reddit" in request.args:
     #     return search_reddit(request.args["reddit"])
@@ -87,7 +92,6 @@ def search():
     # if "text" in request.args:
     #     return search_text(request.args["text"])
 
-    return Response(json.dumps({'error': "Invalid query"}), mimetype="application/json")
 
 
 def search_vid_url(query, distance, frame_count):
