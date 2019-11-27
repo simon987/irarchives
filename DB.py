@@ -167,8 +167,9 @@ class PgConn:
                 traceback.print_stack()
                 self._handle_err(e, query_string, args)
 
-    def query(self, query_string, args=None):
-        self.conn.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
+    def query(self, query_string, args=None, read_committed=False):
+        if read_committed:
+            self.conn.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
         while True:
             try:
                 if SQL_DEBUG:
@@ -249,7 +250,7 @@ class DB:
         with self.get_conn() as conn:
             res = conn.query("SELECT i.hash from imageurls "
                              "INNER JOIN images i on i.id = imageurls.imageid "
-                             "WHERE clean_url = %s", (clean_url(url),))
+                             "WHERE clean_url = %s", (clean_url(url),), read_committed=True)
 
         return None if not res else res[0][0]
 
@@ -257,11 +258,12 @@ class DB:
         with self.get_conn() as conn:
             # TODO: LIMIT X
             if distance <= 0:
-                res = conn.query("SELECT id from images WHERE hash = %s", (hash,))
+                res = conn.query("SELECT id from images WHERE hash = %s", (hash,),
+                                 read_committed=True)
             else:
                 res = conn.query(
                     "SELECT id FROM images WHERE hash_is_within_distance(hash, %s, %s)",
-                    (hash, distance,)
+                    (hash, distance,), read_committed=True,
                 )
 
         return [] if not res else [row[0] for row in res]
@@ -276,7 +278,7 @@ class DB:
                     "WHERE hash_equ_any(hash, %s) "
                     "GROUP BY videos.id "
                     "HAVING COUNT(videoframes.id) >= %s",
-                    (b''.join(hashes), frame_count)
+                    (b''.join(hashes), frame_count), read_committed=True
                 )
             else:
                 res = conn.query(
@@ -285,7 +287,7 @@ class DB:
                     "WHERE hash_is_within_distance_any(hash, %s, %s) "
                     "GROUP BY videos.id "
                     "HAVING COUNT(videoframes.id) >= %s",
-                    (b''.join(hashes), distance, frame_count)
+                    (b''.join(hashes), distance, frame_count), read_committed=True,
                 )
 
         return [] if not res else [row[0] for row in res]
@@ -359,13 +361,13 @@ class DB:
     def get_videoframes(self, video_id):
         with self.get_conn() as conn:
             res = conn.query("SELECT id from videoframes "
-                             "WHERE videoid=%s", (video_id,))
+                             "WHERE videoid=%s", (video_id,), read_committed=True)
         return None if not res else [r[0] for r in res]
 
     def get_video_hashes(self, video_id):
         with self.get_conn() as conn:
             res = conn.query("SELECT hash from videoframes "
-                             "WHERE videoid=%s", (video_id,))
+                             "WHERE videoid=%s", (video_id,), read_committed=True)
         return None if not res else [r[0] for r in res]
 
     def get_or_create_album(self, url):
@@ -432,7 +434,7 @@ class DB:
                 "LEFT JOIN posts p on imageurls.postid = p.id "
                 "LEFT JOIN images im on imageurls.imageid = im.id "
                 "WHERE imageid = ANY (%s)",  # OR c.postid = imageurls.postid
-                (list(images),)
+                (list(images),), read_committed=True,
             )
 
             for row in res:
@@ -501,7 +503,7 @@ class DB:
                 "LEFT JOIN posts p on videourls.postid = p.id "
                 "LEFT JOIN videos vid on videourls.videoid = vid.id "
                 "WHERE videourls.videoid = ANY (%s)",  # OR c.postid = imageurls.postid
-                (list(videos),)
+                (list(videos),), read_committed=True,
             )
 
             for row in res:
@@ -565,14 +567,14 @@ class DB:
                     "SELECT DISTINCT imageid from imageurls "
                     "LEFT JOIN posts p on imageurls.postid = p.id "
                     "WHERE p.hexid=%s",
-                    (reddit_id,)
+                    (reddit_id,), read_committed=True
                 )
             elif len(reddit_id) == 7:
                 res = conn.query(
                     "SELECT DISTINCT imageid from imageurls "
                     "LEFT JOIN comments c on imageurls.commentid = c.id "
                     "WHERE c.hexid=%s",
-                    (reddit_id,)
+                    (reddit_id,), read_committed=True
                 )
             else:
                 raise Exception("Invalid reddit id")
@@ -586,7 +588,7 @@ class DB:
                 "postid IN (SELECT id FROM Posts WHERE author LIKE %s ORDER BY ups DESC LIMIT 50) "
                 "OR commentid IN (SELECT id FROM Comments WHERE author LIKE %s ORDER BY ups DESC LIMIT 50) ",
                 (author, author)
-            )
+            , read_committed=True)
         return res
 
     def get_images_from_album_url(self, album_url):
@@ -596,7 +598,7 @@ class DB:
                 "INNER JOIN imageurls u on albums.id = u.albumid "
                 "INNER JOIN images i on u.imageid = i.id WHERE albums.url = %s",
                 (album_url,)
-            )
+            , read_committed=True)
         return res
 
     def get_images_from_text(self, text):
@@ -617,20 +619,20 @@ class DB:
 
     def get_post_count(self):
         with self.get_conn() as conn:
-            return conn.query("SELECT COUNT(*) FROM posts")[0][0]
+            return conn.query("SELECT COUNT(*) FROM posts", read_committed=True)[0][0]
 
     def get_image_count(self):
         with self.get_conn() as conn:
-            return conn.query("SELECT COUNT(*) FROM images")[0][0]
+            return conn.query("SELECT COUNT(*) FROM images", read_committed=True)[0][0]
 
     def get_videoframe_count(self):
         with self.get_conn() as conn:
-            return conn.query("SELECT COUNT(*) FROM videoframes")[0][0]
+            return conn.query("SELECT COUNT(*) FROM videoframes", read_committed=True)[0][0]
 
     def get_comment_count(self):
         with self.get_conn() as conn:
-            return conn.query("SELECT COUNT(*) FROM comments")[0][0]
+            return conn.query("SELECT COUNT(*) FROM comments", read_committed=True)[0][0]
 
     def get_album_count(self):
         with self.get_conn() as conn:
-            return conn.query("SELECT COUNT(*) FROM albums")[0][0]
+            return conn.query("SELECT COUNT(*) FROM albums", read_committed=True)[0][0]
