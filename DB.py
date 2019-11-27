@@ -407,7 +407,7 @@ class DB:
         with self.get_conn() as conn:
             res = conn.query(
                 "SELECT id FROM posts WHERE hexid=%s",
-                (hexid, ))
+                (hexid,))
         return None if not res else res[0]
 
     # Search
@@ -583,13 +583,20 @@ class DB:
     def get_images_from_author(self, author):
 
         with self.get_conn() as conn:
-            res = conn.query(
-                "SELECT imageid from imageurls WHERE "
-                "postid IN (SELECT id FROM Posts WHERE author LIKE %s ORDER BY ups DESC LIMIT 50) "
-                "OR commentid IN (SELECT id FROM Comments WHERE author LIKE %s ORDER BY ups DESC LIMIT 50) ",
-                (author, author)
-            , read_committed=True)
-        return res
+            imageids = []
+            imageids.extend(conn.query(
+                "SELECT imageid "
+                "from imageurls "
+                "INNER JOIN posts p on imageurls.postid = p.id WHERE author = %s",
+                (author, ), read_committed=True,
+            ))
+            imageids.extend(conn.query(
+                "SELECT imageid "
+                "from imageurls "
+                "INNER JOIN comments c on imageurls.postid = c.id WHERE author = %s",
+                (author, ), read_committed=True,
+            ))
+        return imageids
 
     def get_images_from_album_url(self, album_url):
         with self.get_conn() as conn:
@@ -598,7 +605,7 @@ class DB:
                 "INNER JOIN imageurls u on albums.id = u.albumid "
                 "INNER JOIN images i on u.imageid = i.id WHERE albums.url = %s",
                 (album_url,)
-            , read_committed=True)
+                , read_committed=True)
         return res
 
     def get_images_from_text(self, text):
