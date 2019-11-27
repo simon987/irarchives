@@ -50,10 +50,14 @@ class Httpy:
                 self.curl.setopt(self.curl.URL, url)
                 self.curl.perform()
                 if self.curl.getinfo(self.curl.HTTP_CODE) != 200:
-                    raise Exception("HTTP" + str(self.curl.getinfo(self.curl.HTTP_CODE)))
-                r = body.getvalue()
+
+                    text = body.getvalue()
+                    if "404" not in text:
+                        raise Exception("HTTP" + str(self.curl.getinfo(self.curl.HTTP_CODE)))
+                # r = body.getvalue()
                 body.close()
-                return r
+                raise Exception("REMOVE ME ")  # todo remove
+                # return r
             except Exception as e:
                 if str(e).find("transfer closed") > 0 and retries:
                     retries -= 1

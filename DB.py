@@ -4,6 +4,7 @@ from time import sleep
 
 import psycopg2
 from psycopg2.errorcodes import UNIQUE_VIOLATION
+from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
 
 from common import logger, SQL_DEBUG
 from img_util import thumb_path
@@ -167,6 +168,7 @@ class PgConn:
                 self._handle_err(e, query_string, args)
 
     def query(self, query_string, args=None):
+        self.conn.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
         while True:
             try:
                 if SQL_DEBUG:
@@ -409,6 +411,8 @@ class DB:
     # Search
 
     def build_result_for_images(self, images):
+        if not images:
+            return []
 
         results = []
 

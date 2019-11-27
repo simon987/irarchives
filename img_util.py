@@ -26,7 +26,7 @@ def get_image_urls(url):
 
     config.set(["proxy"], HTTP_PROXY)
     config.set(["verify"], False)
-    config.set(["retries"], 1)
+    config.set(["retries"], 2)
     config.set(["timeout"], 600)
 
     j = ListUrlJob(url)

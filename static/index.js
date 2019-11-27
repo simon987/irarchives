@@ -203,6 +203,7 @@ function query() {
                 pl.remove();
                 handleSearchResponse(request.responseText)
             } else if (request.status === 504) {
+                pl.remove();
                 results_el.appendChild(mkErrorMsg(`Query timed out, try again in a few minutes.`));
             }
         }

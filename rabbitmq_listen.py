@@ -140,6 +140,7 @@ class Consumer:
 
     def _message_callback(self, body, web):
         j = json.loads(body)
+        j["urls"] = j["_urls"]
 
         if "title" in j:
             self.parse_post(Post(*(j[k] for k in POST_FIELDS)), web)

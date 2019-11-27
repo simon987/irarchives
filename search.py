@@ -124,9 +124,18 @@ def search_vid_url(query, distance, frame_count):
     return Response(results.json(), mimetype="application/json")
 
 
+def is_valid_url(url):
+    if not url.startswith(("http://", "https://")):
+        return False
+    return True
+
+
 def search_img_url(query, distance):
     if ' ' in query:
         query = query.replace(' ', '%20')
+
+    if not is_valid_url(query):
+        raise Exception("Invalid query: '%s'" % query)
 
     try:
         hash = db.get_image_hash_from_url(url=query)
