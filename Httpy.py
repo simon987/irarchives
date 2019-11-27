@@ -54,10 +54,9 @@ class Httpy:
                     text = body.getvalue()
                     if "404" not in text:
                         raise Exception("HTTP" + str(self.curl.getinfo(self.curl.HTTP_CODE)))
-                # r = body.getvalue()
+                r = body.getvalue()
                 body.close()
-                raise Exception("REMOVE ME ")  # todo remove
-                # return r
+                return r
             except Exception as e:
                 if str(e).find("transfer closed") > 0 and retries:
                     retries -= 1
