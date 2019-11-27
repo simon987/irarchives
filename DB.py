@@ -434,7 +434,7 @@ class DB:
                 "LEFT JOIN posts p on imageurls.postid = p.id "
                 "LEFT JOIN images im on imageurls.imageid = im.id "
                 "WHERE imageid = ANY (%s)",  # OR c.postid = imageurls.postid
-                (list(images),), read_committed=True,
+                ([(x[0] if isinstance(x, tuple) else x) for x in images],), read_committed=True,
             )
 
             for row in res:
