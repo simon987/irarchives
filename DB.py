@@ -269,6 +269,7 @@ class DB:
         return [] if not res else [row[0] for row in res]
 
     def get_similar_videos_by_hash(self, hashes, distance, frame_count):
+        hashes = list(set(hashes))
         with self.get_conn() as conn:
             # TODO: LIMIT X
             if distance == 0:
@@ -421,19 +422,21 @@ class DB:
         with self.get_conn() as conn:
             # TODO: order by?
             res = conn.query(
-                "SELECT imageurls.url, a.url,"
-                "c.postid, c.hexid, c.author, c.body, c.ups, c.downs, c.created,"
-                "cp.subreddit, cp.permalink, cp.hexid, "
-                "p.hexid, p.title, p.url, p.text, p.author, p.permalink, p.subreddit, p.comments,"
-                " p.ups, p.downs, p.score, p.created,"
-                "im.width, im.height, im.bytes, im.sha1, imageid "
-                "from imageurls "
-                "LEFT JOIN albums a on imageurls.albumid = a.id "
-                "LEFT JOIN comments c on imageurls.commentid = c.id "
-                "   LEFT JOIN posts cp on c.postid = cp.id "
-                "LEFT JOIN posts p on imageurls.postid = p.id "
-                "LEFT JOIN images im on imageurls.imageid = im.id "
-                "WHERE imageid = ANY (%s)",  # OR c.postid = imageurls.postid
+                "WITH DATA AS("
+                " SELECT url, imageid, bytes, sha1, width, height, albumid, postid, commentid "
+                " FROM imageurls imu, images im WHERE imu.imageid = im.id AND im.id = ANY (%s) "
+                ") "
+                "SELECT "
+                "d.url, a.url, c.postid, c.hexid, c.author, c.body, c.ups, "
+                "c.downs, c.created, cp.subreddit, cp.permalink, cp.hexid, "
+                "p.hexid, p.title, p.url, p.text, p.author, p.permalink, p.subreddit, "
+                "p.comments, p.ups, p.downs, p.score, p.created, d.width, d.height, "
+                "d.bytes, d.sha1, imageid "
+                "FROM data d "
+                "LEFT JOIN albums a on d.albumid = a.id "
+                "LEFT JOIN comments c on d.commentid = c.id "
+                "LEFT JOIN posts cp on c.postid = cp.id "
+                "LEFT JOIN posts p on d.postid = p.id",
                 ([(x[0] if isinstance(x, tuple) else x) for x in images],), read_committed=True,
             )
 
@@ -490,20 +493,22 @@ class DB:
         with self.get_conn() as conn:
             # TODO: order by?
             res = conn.query(
-                "SELECT videourls.url,"
-                "c.postid, c.hexid, c.author, c.body, c.ups, c.downs, c.created,"
-                "cp.subreddit, cp.permalink, cp.hexid, "
-                "p.hexid, p.title, p.url, p.text, p.author, p.permalink, p.subreddit, p.comments,"
-                " p.ups, p.downs, p.score, p.created,"
-                "vid.width, vid.height, vid.bytes, vid.sha1, vid.frames, vid.duration, vid.format,"
-                " vid.codec, vid.bitrate, videourls.videoid "
-                "from videourls "
-                "LEFT JOIN comments c on videourls.commentid = c.id "
-                "   LEFT JOIN posts cp on c.postid = cp.id "
-                "LEFT JOIN posts p on videourls.postid = p.id "
-                "LEFT JOIN videos vid on videourls.videoid = vid.id "
-                "WHERE videourls.videoid = ANY (%s)",  # OR c.postid = imageurls.postid
-                (list(videos),), read_committed=True,
+                "WITH DATA AS ("
+                " SELECT url, videoid, postid, commentid, width, "
+                " height, bytes, sha1, frames, duration, format, codec, bitrate "
+                " FROM videourls vu, videos vid "
+                " WHERE vu.videoid = vid.id AND vid.id = ANY (%s)"
+                ")"
+                "SELECT d.url, c.postid, c.hexid, c.author, c.body, c.ups, c.downs,"
+                " c.created, cp.subreddit, cp.permalink, cp.hexid, p.hexid, p.title,"
+                " p.url, p.text, p.author, p.permalink, p.subreddit, p.comments, p.ups,"
+                " p.downs, p.score, p.created, d.width, d.height, d.bytes, d.sha1, d.frames,"
+                " d.duration, d.format, d.codec, d.bitrate, d.videoid "
+                "FROM data d "
+                " LEFT JOIN comments c on d.commentid = c.id "
+                " LEFT JOIN posts cp on c.postid = cp.id "
+                " LEFT JOIN posts p on d.postid = p.id",
+                ([(x[0] if isinstance(x, tuple) else x) for x in videos],), read_committed=True,
             )
 
             for row in res:
@@ -588,13 +593,13 @@ class DB:
                 "SELECT imageid "
                 "from imageurls "
                 "INNER JOIN posts p on imageurls.postid = p.id WHERE author = %s",
-                (author, ), read_committed=True,
+                (author,), read_committed=True,
             ))
             imageids.extend(conn.query(
                 "SELECT imageid "
                 "from imageurls "
                 "INNER JOIN comments c on imageurls.postid = c.id WHERE author = %s",
-                (author, ), read_committed=True,
+                (author,), read_committed=True,
             ))
         return imageids
 
