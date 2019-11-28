@@ -628,23 +628,37 @@ class DB:
         return res
 
     # Stats
-
     def get_post_count(self):
         with self.get_conn() as conn:
-            return conn.query("SELECT COUNT(*) FROM posts", read_committed=True)[0][0]
+            return conn.query(
+                "SELECT reltuples AS approximate_row_count FROM pg_class WHERE relname = 'posts'",
+                read_committed=True
+            )[0][0]
 
     def get_image_count(self):
         with self.get_conn() as conn:
-            return conn.query("SELECT COUNT(*) FROM images", read_committed=True)[0][0]
+            return conn.query(
+                "SELECT reltuples AS approximate_row_count FROM pg_class WHERE relname = 'images'",
+                read_committed=True
+            )[0][0]
 
     def get_videoframe_count(self):
         with self.get_conn() as conn:
-            return conn.query("SELECT COUNT(*) FROM videoframes", read_committed=True)[0][0]
+            return conn.query(
+                "SELECT reltuples AS approximate_row_count FROM pg_class WHERE relname = 'videoframes'",
+                read_committed=True
+            )[0][0]
 
     def get_comment_count(self):
         with self.get_conn() as conn:
-            return conn.query("SELECT COUNT(*) FROM comments", read_committed=True)[0][0]
+            return conn.query(
+                "SELECT reltuples AS approximate_row_count FROM pg_class WHERE relname = 'comments'",
+                read_committed=True
+            )[0][0]
 
     def get_album_count(self):
         with self.get_conn() as conn:
-            return conn.query("SELECT COUNT(*) FROM albums", read_committed=True)[0][0]
+            return conn.query(
+                "SELECT reltuples AS approximate_row_count FROM pg_class WHERE relname = 'albums'",
+                read_committed=True
+            )[0][0]
