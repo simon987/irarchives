@@ -140,12 +140,13 @@ class Consumer:
 
     def _message_callback(self, body, web):
         j = json.loads(body)
-        j["urls"] = j["_urls"]
+        for item in j:
+            item["urls"] = item["_urls"]
 
-        if "title" in j:
-            self.parse_post(Post(*(j[k] for k in POST_FIELDS)), web)
-        else:
-            self.parse_comment(Comment(*(j[k] for k in COMMENT_FIELDS)), web)
+            if "title" in item:
+                self.parse_post(Post(*(item[k] for k in POST_FIELDS)), web)
+            else:
+                self.parse_comment(Comment(*(item[k] for k in COMMENT_FIELDS)), web)
 
     def _message_callback_worker(self):
         logger.info("Started message callback worker")
